@@ -10,6 +10,15 @@ from typing import Any, Iterator
 
 
 CONTROL_DB_SCHEMA_VERSION = 1
+RUN_STATUSES = {
+    "RUNNING",
+    "WAITING_APPROVAL",
+    "FAILED",
+    "REJECTED",
+    "COMPLETED",
+    "CANCELLED",
+}
+EVALUATION_DECISIONS = {"PASS", "REWORK", "HUMAN_GATE"}
 
 
 def _now() -> str:
@@ -276,6 +285,9 @@ class CentralControlStore:
         workflow: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
+        normalized_status = status.strip().upper()
+        if normalized_status not in RUN_STATUSES:
+            raise ValueError(f"Unsupported central run status: {status}")
         now = _now()
         with self.connect() as connection:
             if connection.execute(
@@ -309,7 +321,7 @@ class CentralControlStore:
                     run_id,
                     project_id,
                     workflow,
-                    status,
+                    normalized_status,
                     _json(metadata or {}),
                     now,
                     now,
@@ -463,6 +475,10 @@ class CentralControlStore:
         currency: str = "USD",
         config: dict[str, Any] | None = None,
     ) -> None:
+        if max_cost is not None and max_cost < 0:
+            raise ValueError("Model policy max_cost must be zero or greater")
+        if not role.strip() or not provider.strip() or not model.strip():
+            raise ValueError("Model policy role, provider and model must not be empty")
         with self.connect() as connection:
             if connection.execute(
                 "SELECT 1 FROM projects WHERE project_id = ?",
@@ -651,6 +667,9 @@ class CentralControlStore:
         metrics: dict[str, Any] | None = None,
         run_id: str | None = None,
     ) -> None:
+        normalized_decision = decision.strip().upper()
+        if normalized_decision not in EVALUATION_DECISIONS:
+            raise ValueError(f"Unsupported evaluation decision: {decision}")
         with self.connect() as connection:
             if connection.execute(
                 "SELECT 1 FROM projects WHERE project_id = ?",
@@ -668,7 +687,7 @@ class CentralControlStore:
                     project_id,
                     task_id,
                     run_id,
-                    decision,
+                    normalized_decision,
                     _json(metrics or {}),
                     _now(),
                 ),
