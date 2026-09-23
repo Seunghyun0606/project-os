@@ -9,6 +9,8 @@
 - Add Phase 3 role permission resolution, structured implementation/review/QA/evaluation handoffs and actor separation.
 - Centralize claim/evaluation canonical task-state transitions behind a single writer.
 - Add prototype and production quality profiles plus deterministic configured-gate evaluation.
+- Add framework-neutral Phase 4 native orchestration with file checkpoints, JSONL events and approvals.
+- Add step-level failure resume and approval pause/resume without mutating canonical project state.
 
 ## 0.1.0 - 2026-09-23
 
