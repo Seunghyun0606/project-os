@@ -32,7 +32,7 @@ Canonical project memory lives in the consumer Git repository:
 - .project-os/tasks/
 - .project-os/decisions/
 - .project-os/quality/
-- .project-os/runs/
+- durable task results and selected run summaries that the project chooses to commit
 
 Agent conversation history is not canonical project memory.
 
@@ -56,7 +56,7 @@ This keeps Project OS independent from Codex, OpenAI Agents SDK, LangGraph, Clau
 Project state and workflow execution state must remain separate.
 
 - Project state: Git-managed, durable over months, portable between agents.
-- Workflow state: run-specific checkpoint/retry/wait information, owned by an orchestration adapter.
+- Workflow state: run-specific checkpoint/retry/wait information under `.project-os/runs/runtime/` or an equivalent adapter-owned store.
 
 A future LangGraph checkpoint or Agents SDK session must never replace `.project-os` as the project source of truth.
 
@@ -65,3 +65,21 @@ A future LangGraph checkpoint or Agents SDK session must never replace `.project
 Parallel workers should submit structured results. Canonical state transitions should be performed by one controller path after validation.
 
 This prevents worktree and multi-agent state conflicts.
+
+
+## Native orchestration
+
+The native Phase 4 runtime is intentionally sequential and small. It exists to prove the orchestration contracts before adopting a larger framework.
+
+```text
+workflow YAML
+    |
+NativeOrchestrator
+    |
+    +-- AgentRunner
+    +-- CheckpointStore
+    +-- EventStore
+    +-- ApprovalGateway
+```
+
+The orchestrator never mutates canonical project state directly. Any future business workflow that needs to change task state must go through the Phase 3 validated handoff and single-writer path.
