@@ -55,33 +55,39 @@ Deliver:
 Goal: support long-running workflows without binding Project OS to one framework.
 
 Deliver:
-- AgentRunner contract
-- Orchestrator contract
-- CheckpointStore contract
-- ApprovalGateway
-- native runner first
-- optional Agents SDK/LangGraph adapters later
+- AgentRunner contract — implemented
+- Orchestrator contract — implemented
+- CheckpointStore contract — implemented with file backend
+- EventStore contract — implemented with JSONL backend
+- ApprovalGateway — implemented with file backend
+- native runner first — implemented
+- checkpointed failure/resume — implemented
+- approval pause/resume — implemented
+- optional Agents SDK/LangGraph adapters later — pending until needed
 
 ## Phase 5 - Multi-harness integration
 
 Goal: let Codex, Claude Code, Cursor and other harnesses use the same project contract.
 
 Deliver:
-- optional MCP adapter
-- CLI remains supported
-- role-based tool surface
-- harness-neutral result format
+- harness-neutral ProjectService — implemented
+- optional MCP adapter — implemented without transport dependency
+- CLI remains supported — routed through ProjectService for core business actions
+- role-based business-intent tool surface — implemented
+- harness-neutral result format — implemented and versioned
+- separate automated test evidence — implemented
 
 ## Phase 6 - Central project control service
 
 Goal: manage many Project OS repositories and agent runs centrally without moving canonical project memory out of Git.
 
 Deliver:
-- project registry
-- central run/event ledger
-- model policy and cost accounting
-- centralized orchestration adapters
-- metrics and eval history
-- migration/compatibility management
+- project registry — implemented with SQLite metadata store
+- central run/event ledger — implemented
+- model policy and cost accounting — implemented with role-level budget reporting
+- centralized orchestration adapters — implemented for checkpoint/event/approval contracts
+- metrics and eval history — implemented foundation
+- migration/compatibility management — implemented as non-mutating assessment
+- versioned central DB schema — implemented
 
-The central service may use a database for runtime metadata, but `.project-os` remains the canonical project state.
+The central service uses SQLite for operational metadata, while `.project-os` remains the canonical project state. Losing the central DB must not make a consumer repository uninterpretable.

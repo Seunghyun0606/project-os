@@ -77,6 +77,7 @@ class QualityGateEvaluator:
         implementation = self._result(task_id)
         review = self._result(task_id, ".review")
         qa = self._result(task_id, ".qa")
+        tests = self._result(task_id, ".tests")
 
         missing: list[str] = []
         failed: list[str] = []
@@ -85,7 +86,10 @@ class QualityGateEvaluator:
             missing.append("implementation_result")
             return {"passed": False, "missing": missing, "failed": failed}
 
-        verification = implementation.get("verification", {}) or {}
+        implementation_verification = implementation.get("verification", {}) or {}
+        test_verification = (tests or {}).get("verification", {}) or {}
+        verification = dict(implementation_verification)
+        verification.update(test_verification)
         for gate in self.AUTOMATED_GATES:
             if bool(required.get(gate, False)) and not _passed(verification.get(gate)):
                 failed.append(gate)
