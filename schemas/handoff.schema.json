@@ -5,7 +5,7 @@
   "required": ["task", "kind", "role", "actor"],
   "properties": {
     "task": {"type": "string"},
-    "kind": {"enum": ["implementation", "review", "qa", "evaluation"]},
+    "kind": {"enum": ["implementation", "review", "qa", "test", "evaluation"]},
     "role": {"enum": ["planner", "architect", "developer", "reviewer", "qa", "evaluator"]},
     "actor": {"type": "string", "minLength": 1},
     "status": {"type": "string"},
