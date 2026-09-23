@@ -11,6 +11,9 @@
 - Add prototype and production quality profiles plus deterministic configured-gate evaluation.
 - Add framework-neutral Phase 4 native orchestration with file checkpoints, JSONL events and approvals.
 - Add step-level failure resume and approval pause/resume without mutating canonical project state.
+- Add Phase 5 harness-neutral ProjectService and versioned result envelope.
+- Route CLI business actions through the shared service and add separate automated test evidence.
+- Add a thin MCP-compatible business-tool adapter with no MCP transport dependency or unrestricted mutation tools.
 
 ## 0.1.0 - 2026-09-23
 
