@@ -38,17 +38,23 @@ class CanonicalStateWriter:
         self.project.store.save_yaml("state/backlog.yaml", backlog)
         self.project.store.save_yaml("state/current.yaml", state)
 
-    def apply_evaluation(self, task_id: str, decision: str) -> None:
+    def validate_evaluation(self, task_id: str, decision: str) -> None:
         normalized = decision.strip().upper()
         if normalized not in {"PASS", "REWORK", "HUMAN_GATE"}:
             raise ValueError(f"Unsupported evaluation decision: {decision}")
-
         backlog = self.project.backlog()
         task = self._task(backlog, task_id)
         if task.get("status") != "active":
             raise ValueError(
                 f"Task {task_id} must be active before evaluation; current status is {task.get('status')}"
             )
+
+    def apply_evaluation(self, task_id: str, decision: str) -> None:
+        self.validate_evaluation(task_id, decision)
+        normalized = decision.strip().upper()
+
+        backlog = self.project.backlog()
+        task = self._task(backlog, task_id)
         state = self.project.current_state()
 
         current = [item for item in list(state.get("current_tasks", []) or []) if item != task_id]
