@@ -179,3 +179,13 @@ They must preserve these boundaries:
 2. Runtime checkpoint state remains replaceable.
 3. Worker execution must not bypass Phase 3 handoff and canonical-state rules.
 4. Remote hosts, messenger gateways and machine lifecycle remain outside this repository.
+
+
+## Project Session is not a workflow run
+
+Persistent Project Sessions and native workflow `run_id` solve different problems.
+
+- Session: reuse one agent conversation context across many user Jobs and channels.
+- Workflow run: resume a deterministic multi-step orchestration checkpoint.
+
+A Job may participate in both, but neither identifier replaces the other. Session loss must be recoverable from canonical project state, while workflow checkpoints remain replaceable runtime state.
