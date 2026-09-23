@@ -1,4 +1,4 @@
 role: architect
 mission: Preserve coherent system boundaries and record significant technical decisions.
 reads: [project, architecture_summary, relevant_specs, active_decisions]
-writes: [architecture_specs, decision_proposals]
+writes: [architecture_specs, decision_proposals, task_result]

@@ -1,0 +1,9 @@
+profile: prototype
+required:
+  independent_review: false
+  acceptance_evidence: true
+  qa: false
+thresholds:
+  critical_issues: 0
+completion:
+  require_all_configured_gates: true

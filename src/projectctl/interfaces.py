@@ -26,7 +26,12 @@ class AgentRunner(Protocol):
 
 
 class Orchestrator(Protocol):
-    async def execute(self, workflow: str, project_root: Path) -> dict[str, Any]: ...
+    async def execute(
+        self,
+        workflow: str,
+        project_root: Path,
+        run_id: str | None = None,
+    ) -> dict[str, Any]: ...
 
 
 class CheckpointStore(Protocol):
@@ -41,3 +46,4 @@ class EventStore(Protocol):
 class ApprovalGateway(Protocol):
     def request(self, gate: str, payload: dict[str, Any]) -> str: ...
     def status(self, approval_id: str) -> str: ...
+    def resolve(self, approval_id: str, status: str) -> None: ...
