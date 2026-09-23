@@ -14,6 +14,7 @@ from .handoffs import EvaluationService, HandoffStore, resolve_actor
 from .history import compact_run_history
 from .project import Project
 from .roles import RolePolicyResolver
+from .runtime_stores import FileApprovalGateway, FileCheckpointStore
 from .transitions import CanonicalStateWriter
 from .scaffold import install_scaffold
 from .scheduler import DeterministicTaskScheduler
@@ -229,6 +230,44 @@ def role_policy(
         typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
         return
     typer.echo(yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).rstrip())
+
+
+@app.command("runtime-status")
+def runtime_status(
+    run_id: str,
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Show workflow runtime checkpoint state without reading canonical project state."""
+    payload = FileCheckpointStore(Project.open().root).load_checkpoint(run_id)
+    if payload is None:
+        raise typer.BadParameter(f"Unknown runtime run: {run_id}")
+    if json_output:
+        typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+    typer.echo(yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).rstrip())
+
+
+@app.command("approval-status")
+def approval_status(approval_id: str) -> None:
+    """Show the current status of a native workflow approval."""
+    try:
+        status = FileApprovalGateway(Project.open().root).status(approval_id)
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(status)
+
+
+@app.command("approval-resolve")
+def approval_resolve(
+    approval_id: str,
+    status: str = typer.Argument(..., help="approved or rejected"),
+) -> None:
+    """Resolve a pending native workflow approval."""
+    try:
+        FileApprovalGateway(Project.open().root).resolve(approval_id, status)
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"{approval_id}: {status.lower()}")
 
 
 @app.command("compact-runs")
