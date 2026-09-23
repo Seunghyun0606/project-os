@@ -151,6 +151,7 @@ class CentralControlStore:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 project_id TEXT NOT NULL,
                 run_id TEXT,
+                role TEXT,
                 provider TEXT NOT NULL,
                 model TEXT NOT NULL,
                 input_tokens INTEGER NOT NULL DEFAULT 0,
@@ -514,6 +515,7 @@ class CentralControlStore:
         project_id: str,
         provider: str,
         model: str,
+        role: str | None = None,
         input_tokens: int = 0,
         output_tokens: int = 0,
         cost: float = 0.0,
@@ -531,13 +533,14 @@ class CentralControlStore:
             connection.execute(
                 """
                 INSERT INTO usage_records (
-                    project_id, run_id, provider, model,
+                    project_id, run_id, role, provider, model,
                     input_tokens, output_tokens, cost, currency, recorded_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     project_id,
                     run_id,
+                    role,
                     provider,
                     model,
                     input_tokens,
@@ -562,19 +565,20 @@ class CentralControlStore:
         with self.connect() as connection:
             rows = connection.execute(
                 f"""
-                SELECT provider, model, currency,
+                SELECT role, provider, model, currency,
                        SUM(input_tokens) AS input_tokens,
                        SUM(output_tokens) AS output_tokens,
                        SUM(cost) AS cost
                 FROM usage_records
                 WHERE {where}
-                GROUP BY provider, model, currency
-                ORDER BY provider, model, currency
+                GROUP BY role, provider, model, currency
+                ORDER BY role, provider, model, currency
                 """,
                 tuple(args),
             ).fetchall()
         groups = [
             {
+                "role": row["role"],
                 "provider": row["provider"],
                 "model": row["model"],
                 "currency": row["currency"],
@@ -596,6 +600,47 @@ class CentralControlStore:
                 )
                 for currency in sorted({item["currency"] for item in groups})
             },
+        }
+
+
+    def model_budget_status(self, project_id: str, role: str) -> dict[str, Any]:
+        policy = self.get_model_policy(project_id, role)
+        if policy is None:
+            return {
+                "project_id": project_id,
+                "role": role,
+                "configured": False,
+                "max_cost": None,
+                "spent": 0.0,
+                "remaining": None,
+                "currency": None,
+                "exceeded": False,
+            }
+
+        currency = str(policy["currency"])
+        with self.connect() as connection:
+            row = connection.execute(
+                """
+                SELECT SUM(cost) AS spent
+                FROM usage_records
+                WHERE project_id = ? AND role = ? AND currency = ?
+                """,
+                (project_id, role, currency),
+            ).fetchone()
+        spent = float(row["spent"] or 0)
+        max_cost = policy.get("max_cost")
+        remaining = None if max_cost is None else float(max_cost) - spent
+        return {
+            "project_id": project_id,
+            "role": role,
+            "configured": True,
+            "provider": policy["provider"],
+            "model": policy["model"],
+            "max_cost": max_cost,
+            "spent": spent,
+            "remaining": remaining,
+            "currency": currency,
+            "exceeded": bool(max_cost is not None and spent > float(max_cost)),
         }
 
     def record_evaluation(
