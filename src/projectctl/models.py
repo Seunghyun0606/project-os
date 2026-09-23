@@ -27,11 +27,21 @@ class ProjectStatus(BaseModel):
     human_gate: bool
 
 
+class ContextResource(BaseModel):
+    kind: str
+    path: str
+    content: str
+
+
 class ContextPackage(BaseModel):
     task: dict[str, Any]
-    project_file: str
-    specs: list[str] = Field(default_factory=list)
-    relevant_files: list[str] = Field(default_factory=list)
+    role: str
+    policy: dict[str, Any] = Field(default_factory=dict)
+    resources: list[ContextResource] = Field(default_factory=list)
     active_decisions: list[str] = Field(default_factory=list)
+    task_results: list[dict[str, Any]] = Field(default_factory=list)
     acceptance: list[str] = Field(default_factory=list)
     verification: list[str] = Field(default_factory=list)
+    estimated_tokens: int = 0
+    token_budget: int = 0
+    truncated: bool = False
