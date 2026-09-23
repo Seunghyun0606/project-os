@@ -53,13 +53,24 @@ def install_scaffold(
 ) -> None:
     target = target.resolve()
     template = scaffold_root()
+    entries = list(iter_files(template))
 
-    for entry, relative in iter_files(template):
-        destination = target / relative
-        if destination.exists() and not force:
+    if not force:
+        conflicts = [
+            target / relative
+            for _, relative in entries
+            if (target / relative).exists()
+        ]
+        if conflicts:
+            preview = ", ".join(str(path) for path in conflicts[:5])
+            if len(conflicts) > 5:
+                preview += f", ... (+{len(conflicts) - 5} more)"
             raise FileExistsError(
-                f"Refusing to overwrite {destination}. Use --force if intentional."
+                f"Refusing to modify an existing project because scaffold files already exist: {preview}"
             )
+
+    for entry, relative in entries:
+        destination = target / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         content = entry.read_text(encoding="utf-8")
         content = content.replace("__PROJECT_ID__", project_id)
