@@ -47,7 +47,7 @@ python -m pip install -e .
 
 ```bash
 projectctl version
-# 0.2.0
+# 0.3.0
 ```
 
 ### 2. 기존 프로젝트에 scaffold 추가
@@ -409,6 +409,10 @@ projectctl approval-status approval-...
 projectctl approval-resolve approval-... approved
 projectctl control register /path/to/project
 projectctl control dashboard
+projectctl sessions                 # 등록 프로젝트의 persistent Session 목록
+projectctl session show S-...       # Session 상세 상태
+projectctl session new project-os   # 새 작업 context를 lazy-create
+projectctl session attach S-...     # 같은 Codex thread를 Desktop에서 resume
 ```
 
 context package는 역할별 기본 정책과 프로젝트 override를 합쳐 필요한 spec·파일·활성 Decision·선행 Task 결과 요약만 읽습니다. 전체 저장소를 기본으로 스캔하지 않으며 역할별 token budget을 넘으면 deterministic하게 잘라냅니다.
@@ -450,11 +454,11 @@ Project OS는 package, scaffold, schema version을 구분합니다.
 
 | 구분 | 현재 | 의미 |
 | --- | --- | --- |
-| package | `0.2.0` | `projectctl` 도구 버전 |
+| package | `0.3.0` | `projectctl` 도구 버전 |
 | scaffold | `0.2.0` | 새 프로젝트에 생성되는 scaffold 버전 |
 | schema | `1` | canonical `.project-os` 데이터 형식 |
 
-새 0.2.0 scaffold는 `projectctl >=0.2,<1.0`을 요구합니다. 기존 0.1.x consumer repository는 0.2.0 package로 계속 읽을 수 있으며, 기존 프로젝트에 최신 scaffold를 통째로 덮어쓰지 않습니다.
+새 0.2.0 scaffold는 `projectctl >=0.2,<1.0`을 요구합니다. 기존 0.1.x/0.2.x consumer repository는 0.3.0 package로 계속 읽을 수 있으며, 기존 프로젝트에 최신 scaffold를 통째로 덮어쓰지 않습니다.
 
 Phase 6+ 중앙 SQLite DB schema는 consumer schema와 별도로 관리되며 현재 version은 `2`입니다. v2는 persistent Project Session과 Job linkage를 추가합니다.
 
@@ -469,4 +473,4 @@ Phase 6+ 중앙 SQLite DB schema는 consumer schema와 별도로 관리되며 �
 - Agent는 자기 작업을 스스로 승인하지 않는다.
 - 작업 완료는 설정된 evidence와 quality gate로 판단한다.
 - 특정 모델, Codex, LangGraph에 Project OS 자체를 종속시키지 않는다.
-- Remote 실행과 메신저 제어는 별도 시스템의 책임으로 둔다.
+- Telegram/Slack network transport, host routing과 machine lifecycle은 별도 Remote Control의 책임으로 두고, cross-channel Project Session은 Project OS control plane이 소유한다.
