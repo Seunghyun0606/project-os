@@ -231,6 +231,9 @@ projectctl role-policy developer # 역할별 권한 확인
 projectctl review TASK-001 review.yaml --actor reviewer-1
 projectctl qa TASK-001 qa.yaml --actor qa-1
 projectctl evaluate TASK-001 evaluation.yaml --actor evaluator-1
+projectctl runtime-status run-001
+projectctl approval-status approval-...
+projectctl approval-resolve approval-... approved
 ```
 
 context package는 역할별 기본 정책과 프로젝트 override를 합쳐 필요한 spec·파일·활성 Decision·선행 Task 결과 요약만 읽습니다. 전체 저장소를 기본으로 스캔하지 않으며 역할별 token budget을 넘으면 deterministic하게 잘라냅니다.
@@ -240,6 +243,8 @@ context package는 역할별 기본 정책과 프로젝트 override를 합쳐 �
 오래된 실행 기록은 `.project-os/runs/history/`에 계속 쌓아두지 않고 `projectctl compact-runs`로 정리할 수 있습니다. 최근 실행만 남기고, 오래된 실행은 작은 구조화 요약을 `runs/summaries/history.yaml`에 남긴 뒤 원본을 `runs/archive/`로 이동합니다. 원본을 삭제하지 않으므로 Git에서 검증 근거를 계속 추적할 수 있습니다. 자세한 형식은 `docs/RUN_HISTORY.md`를 참고하세요.
 
 Phase 3부터 worker 결과와 승인 결과를 분리합니다. `submit`은 implementation handoff만 저장하며 Task를 완료하지 않습니다. reviewer/QA/evaluator는 별도 handoff를 기록하고, 최종 상태 변경은 `evaluate`를 통해 single-writer state transition으로만 수행됩니다. 같은 actor가 자신의 implementation을 review/evaluate하는 것은 차단됩니다. 자세한 내용은 `docs/ROLES_AND_HANDOFFS.md`를 참고하세요.
+
+Phase 4의 native orchestrator는 workflow 실행을 checkpoint 단위로 재개할 수 있습니다. 실행 중 checkpoint/event/approval은 `.project-os/runs/runtime/`에만 저장되며 canonical backlog/state를 직접 수정하지 않습니다. 따라서 orchestration backend를 교체해도 프로젝트 정본은 그대로 유지됩니다. 자세한 내용은 `docs/ORCHESTRATION.md`를 참고하세요.
 
 초기 버전에서는 Project OS의 상태와 규칙 관리에 집중합니다. 실제 LLM 실행기, LangGraph, Agents SDK, MCP, Remote Worker는 Project OS core와 분리된 adapter로 확장할 수 있도록 설계합니다.
 
