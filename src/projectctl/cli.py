@@ -8,16 +8,13 @@ import typer
 import yaml
 
 from . import __version__
-from .context import FileContextBuilder
 from .doctor import inspect
-from .handoffs import EvaluationService, HandoffStore, resolve_actor
 from .history import compact_run_history
 from .project import Project
 from .roles import RolePolicyResolver
 from .runtime_stores import FileApprovalGateway, FileCheckpointStore
-from .transitions import CanonicalStateWriter
 from .scaffold import install_scaffold
-from .scheduler import DeterministicTaskScheduler
+from .service import ProjectService
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -51,10 +48,17 @@ def init_project(
     typer.echo(f"Project OS scaffold installed at {target}")
 
 
+def _service_data(result) -> dict:
+    if not result.ok:
+        message = result.error.message if result.error else "Project OS request failed"
+        raise typer.BadParameter(message)
+    return result.data or {}
+
+
 @app.command()
 def status(json_output: bool = typer.Option(False, "--json")) -> None:
     """Show the current canonical project snapshot."""
-    payload = Project.open().status().model_dump()
+    payload = _service_data(ProjectService.open().get_status())
     if json_output:
         typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
         return
@@ -68,8 +72,8 @@ def next_task(
     json_output: bool = typer.Option(False, "--json"),
 ) -> None:
     """Select the highest-priority ready task whose dependencies are done."""
-    project = Project.open()
-    task = DeterministicTaskScheduler(project).next_task(role)
+    payload = _service_data(ProjectService.open().get_next_task(role))
+    task = payload.get("task")
     if task is None:
         typer.echo("No eligible task.")
         raise typer.Exit(code=2)
@@ -85,7 +89,7 @@ def context(
     role: Optional[str] = typer.Option(None, "--role"),
 ) -> None:
     """Build a small structured context package for a task."""
-    payload = FileContextBuilder(Project.open()).build(task_id, role)
+    payload = _service_data(ProjectService.open().build_context(task_id, role))
     typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
@@ -95,12 +99,8 @@ def claim(
     role: str = typer.Option("developer", "--role"),
 ) -> None:
     """Move the next eligible task to active state."""
-    project = Project.open()
-    try:
-        CanonicalStateWriter(project).claim(task_id, role)
-    except (KeyError, ValueError) as exc:
-        raise typer.BadParameter(str(exc)) from exc
-    typer.echo(f"Claimed {task_id}")
+    payload = _service_data(ProjectService.open().claim_task(task_id, role))
+    typer.echo(f"Claimed {payload['task_id']}")
 
 
 def _load_handoff_file(path: Path) -> dict:
@@ -112,13 +112,6 @@ def _load_handoff_file(path: Path) -> dict:
     return payload
 
 
-def _task_role(project: Project, task_id: str) -> str:
-    for task in project.backlog().get("tasks", []) or []:
-        if task.get("id") == task_id:
-            return str(task.get("role", "developer"))
-    raise typer.BadParameter(f"Unknown task: {task_id}")
-
-
 @app.command()
 def submit(
     task_id: str,
@@ -127,23 +120,17 @@ def submit(
     actor: Optional[str] = typer.Option(None, "--actor"),
 ) -> None:
     """Store implementation output without self-approving completion."""
-    project = Project.open()
     payload = _load_handoff_file(result_file)
-    resolved_role = role or _task_role(project, task_id)
-    resolved_actor = resolve_actor(actor, resolved_role)
-    try:
-        destination = HandoffStore(project).submit(
+    data = _service_data(
+        ProjectService.open().submit_result(
             task_id=task_id,
-            kind="implementation",
             payload=payload,
-            role=resolved_role,
-            actor=resolved_actor,
+            role=role,
+            actor=actor,
         )
-    except (ValueError, PermissionError, FileExistsError) as exc:
-        raise typer.BadParameter(str(exc)) from exc
-
+    )
     typer.echo(
-        f"Stored implementation result at {destination.relative_to(project.root)}. "
+        f"Stored implementation result at {data['path']}. "
         "Completion still requires independent quality evaluation."
     )
 
@@ -155,19 +142,15 @@ def submit_review(
     actor: Optional[str] = typer.Option(None, "--actor"),
 ) -> None:
     """Store an independent reviewer handoff."""
-    project = Project.open()
     payload = _load_handoff_file(result_file)
-    try:
-        destination = HandoffStore(project).submit(
+    data = _service_data(
+        ProjectService.open().submit_review(
             task_id=task_id,
-            kind="review",
             payload=payload,
-            role="reviewer",
-            actor=resolve_actor(actor, "reviewer"),
+            actor=actor,
         )
-    except (ValueError, PermissionError, FileExistsError) as exc:
-        raise typer.BadParameter(str(exc)) from exc
-    typer.echo(f"Stored review result at {destination.relative_to(project.root)}")
+    )
+    typer.echo(f"Stored review result at {data['path']}")
 
 
 @app.command("qa")
@@ -177,19 +160,33 @@ def submit_qa(
     actor: Optional[str] = typer.Option(None, "--actor"),
 ) -> None:
     """Store an independent QA handoff."""
-    project = Project.open()
     payload = _load_handoff_file(result_file)
-    try:
-        destination = HandoffStore(project).submit(
+    data = _service_data(
+        ProjectService.open().submit_qa(
             task_id=task_id,
-            kind="qa",
             payload=payload,
-            role="qa",
-            actor=resolve_actor(actor, "qa"),
+            actor=actor,
         )
-    except (ValueError, PermissionError, FileExistsError) as exc:
-        raise typer.BadParameter(str(exc)) from exc
-    typer.echo(f"Stored QA result at {destination.relative_to(project.root)}")
+    )
+    typer.echo(f"Stored QA result at {data['path']}")
+
+
+@app.command("record-test")
+def record_test_result(
+    task_id: str,
+    result_file: Path,
+    actor: Optional[str] = typer.Option(None, "--actor"),
+) -> None:
+    """Store automated verification evidence separately from implementation output."""
+    payload = _load_handoff_file(result_file)
+    data = _service_data(
+        ProjectService.open().record_test_result(
+            task_id=task_id,
+            payload=payload,
+            actor=actor,
+        )
+    )
+    typer.echo(f"Stored test result at {data['path']}")
 
 
 @app.command("evaluate")
@@ -199,20 +196,17 @@ def evaluate_task(
     actor: Optional[str] = typer.Option(None, "--actor"),
 ) -> None:
     """Evaluate evidence and apply the only completion-state transition path."""
-    project = Project.open()
     payload = _load_handoff_file(result_file)
-    try:
-        destination = EvaluationService(project).evaluate(
+    data = _service_data(
+        ProjectService.open().evaluate_task(
             task_id=task_id,
             payload=payload,
-            actor=resolve_actor(actor, "evaluator"),
+            actor=actor,
         )
-    except (ValueError, PermissionError, FileExistsError) as exc:
-        raise typer.BadParameter(str(exc)) from exc
-    decision = str(payload.get("decision", payload.get("status", ""))).upper()
+    )
     typer.echo(
-        f"Stored evaluation at {destination.relative_to(project.root)}; "
-        f"canonical task decision: {decision}"
+        f"Stored evaluation at {data['path']}; "
+        f"canonical task decision: {data['decision']}"
     )
 
 
