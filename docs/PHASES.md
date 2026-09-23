@@ -44,11 +44,11 @@ Deliver:
 Goal: separate planning, implementation, review, QA and evaluation.
 
 Deliver:
-- role contracts
-- permission policy
-- single-writer canonical state
-- structured handoffs
-- independent review
+- role contracts — implemented
+- permission policy — implemented foundation
+- single-writer canonical state — implemented for claim/evaluation transitions
+- structured handoffs — implemented
+- independent review — enforced by actor separation
 
 ## Phase 4 - Orchestration abstraction
 
