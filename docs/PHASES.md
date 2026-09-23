@@ -55,12 +55,15 @@ Deliver:
 Goal: support long-running workflows without binding Project OS to one framework.
 
 Deliver:
-- AgentRunner contract
-- Orchestrator contract
-- CheckpointStore contract
-- ApprovalGateway
-- native runner first
-- optional Agents SDK/LangGraph adapters later
+- AgentRunner contract — implemented
+- Orchestrator contract — implemented
+- CheckpointStore contract — implemented with file backend
+- EventStore contract — implemented with JSONL backend
+- ApprovalGateway — implemented with file backend
+- native runner first — implemented
+- checkpointed failure/resume — implemented
+- approval pause/resume — implemented
+- optional Agents SDK/LangGraph adapters later — pending until needed
 
 ## Phase 5 - Multi-harness integration
 
