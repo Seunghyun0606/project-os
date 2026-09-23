@@ -45,6 +45,10 @@ class CanonicalStateWriter:
 
         backlog = self.project.backlog()
         task = self._task(backlog, task_id)
+        if task.get("status") != "active":
+            raise ValueError(
+                f"Task {task_id} must be active before evaluation; current status is {task.get('status')}"
+            )
         state = self.project.current_state()
 
         current = [item for item in list(state.get("current_tasks", []) or []) if item != task_id]
