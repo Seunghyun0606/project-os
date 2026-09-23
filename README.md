@@ -4,7 +4,7 @@ Project OS는 AI 에이전트가 프로젝트의 방향과 현재 상태를 잃�
 
 목표는 매 세션마다 긴 프롬프트를 다시 설명하지 않아도, 프로젝트 저장소 안의 상태·계획·작업 기준을 읽고 이어서 일할 수 있게 하는 것입니다.
 
-> Remote 실행, 메신저 제어, Lightsail/Desktop 라우팅은 이 저장소의 책임이 아닙니다. 별도 Remote Control 프로젝트에서 다룹니다.
+> Telegram/Slack transport, host routing, machine lifecycle은 별도 Remote Control의 책임입니다. 다만 채널을 넘어 이어지는 **Project Session의 identity, persistence, lock, Codex thread binding**은 Project OS control plane이 소유합니다.
 
 ## 개요
 
@@ -349,16 +349,43 @@ Project OS의 상태 파일과 상세 기획서를 분리하면 현재 상태를
 
 단순 구현 선택, 테스트 작성, 명확한 버그 수정은 기본적으로 Agent가 계속 진행할 수 있도록 합니다.
 
-### 장기 작업과 세션 변경
+### 장기 작업과 Persistent Project Session
 
-Project OS는 대화 세션을 장기 기억으로 사용하지 않습니다.
+Project OS는 대화 세션 자체를 프로젝트의 장기 정본으로 사용하지 않습니다. 대신 Remote Control이나 Desktop이 이어서 작업할 수 있도록 **Project Session**을 운영 메타데이터로 유지할 수 있습니다.
 
 ```text
-대화/세션 = 일시적인 작업 공간
-Git + PROJECT.md + .project-os = 프로젝트의 장기 기억
+Telegram / Desktop
+        ↓
+Project OS Project Session
+        ↓
+Codex thread/session
+        ↓
+여러 Job
 ```
 
-새 세션이나 다른 모델이 시작하더라도 저장소의 정본을 읽어 현재 상태를 복구할 수 있어야 합니다.
+같은 Project의 active Session이 있으면 다음 Job은 기존 `codex_session_id`를 resume합니다. 새 context가 필요할 때만 Session을 rollover합니다.
+
+```bash
+projectctl sessions
+projectctl session show S-20260924-AB12CD34
+projectctl session new project-os --created-by telegram
+projectctl session attach S-20260924-AB12CD34
+```
+
+Remote gateway는 `/session`, `/session new`, `/sessions`를 `SessionCommandHandler`에 연결할 수 있습니다. 일반 메시지는 `CodexSessionExecutor`에 전달하면 첫 Job에서는 새 `codex exec --json` thread를 만들고, 이후 Job에서는 같은 thread를 `codex exec resume`으로 재사용합니다.
+
+Session 정보는 기본 중앙 DB인 `~/.project-os/control.db`의 `sessions` / `jobs`에 저장되므로 Project OS 프로세스를 재시작해도 유지됩니다. consumer repository의 scaffold에는 DB가 복사되지 않습니다.
+
+`PROJECT_OS_CODEX_HOME`이 있으면 Remote Worker와 Desktop Codex의 공통 `CODEX_HOME`으로 우선 사용하고, 없으면 기존 `CODEX_HOME`, 그마저 없으면 Codex 기본 home을 사용합니다.
+
+중요한 경계는 그대로 유지됩니다.
+
+```text
+Codex Session = 단기/중기 작업 context
+PROJECT.md + .project-os = 장기 복구 가능한 Source of Truth
+```
+
+따라서 Codex local session이 사라져도 프로젝트 정본은 Git에서 복구할 수 있어야 합니다. 자세한 lifecycle, lock, resume failure 처리와 Remote Control 연결 방법은 `docs/SESSIONS.md`를 참고하세요.
 
 ### projectctl 주요 명령
 
@@ -429,7 +456,7 @@ Project OS는 package, scaffold, schema version을 구분합니다.
 
 새 0.2.0 scaffold는 `projectctl >=0.2,<1.0`을 요구합니다. 기존 0.1.x consumer repository는 0.2.0 package로 계속 읽을 수 있으며, 기존 프로젝트에 최신 scaffold를 통째로 덮어쓰지 않습니다.
 
-Phase 6의 중앙 SQLite DB schema는 consumer schema와 별도로 관리되며 현재 version은 `1`입니다.
+Phase 6+ 중앙 SQLite DB schema는 consumer schema와 별도로 관리되며 현재 version은 `2`입니다. v2는 persistent Project Session과 Job linkage를 추가합니다.
 
 자세한 호환성과 upgrade 원칙은 `docs/VERSIONING.md`를 참고하세요.
 
