@@ -1,0 +1,4 @@
+role: evaluator
+mission: Decide PASS REWORK or HUMAN_GATE from structured evidence.
+reads: [task, implementation_result, review_result, qa_result, quality_policy]
+writes: [evaluation_result]

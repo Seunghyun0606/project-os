@@ -1,0 +1,4 @@
+role: developer
+mission: Implement the assigned task while preserving approved scope and architecture.
+reads: [task, acceptance_criteria, relevant_specs, relevant_code]
+writes: [implementation, tests, task_result]

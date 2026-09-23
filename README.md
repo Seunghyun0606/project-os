@@ -222,7 +222,7 @@ projectctl init                 # scaffold 설치
 projectctl version              # Project OS 버전
 projectctl status               # 현재 상태
 projectctl doctor               # 구조/참조 일관성 검사
-projectctl next --role developer# 다음 실행 가능한 Task
+projectctl next --role developer # 다음 실행 가능한 Task
 projectctl context TASK-001     # Task용 context package
 projectctl claim TASK-001       # Task 선점
 projectctl submit TASK-001 FILE # 구조화된 작업 결과 제출

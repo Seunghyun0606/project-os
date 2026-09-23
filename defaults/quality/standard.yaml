@@ -1,0 +1,8 @@
+profile: standard
+required:
+  independent_review: true
+  acceptance_evidence: true
+thresholds:
+  critical_issues: 0
+completion:
+  require_all_configured_gates: true
