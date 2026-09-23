@@ -14,8 +14,9 @@ def test_parse_version_normalizes_short_versions():
 
 
 def test_compatibility_range():
-    assert check_compatibility("0.1.0", ">=0.1,<1.0").compatible is True
-    result = check_compatibility("1.0.0", ">=0.1,<1.0")
+    assert check_compatibility("0.2.0", ">=0.2,<1.0").compatible is True
+    assert check_compatibility("0.2.0", ">=0.1,<1.0").compatible is True
+    result = check_compatibility("1.0.0", ">=0.2,<1.0")
     assert result.compatible is False
 
 
