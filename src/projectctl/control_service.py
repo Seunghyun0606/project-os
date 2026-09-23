@@ -6,7 +6,6 @@ from typing import Any
 from . import __version__
 from .central_store import CentralControlStore
 from .project import Project
-from .sessions import SessionService
 from .versioning import check_compatibility, parse_version
 
 
@@ -216,113 +215,13 @@ class CentralControlService:
         )
         return self.store.get_migration_status(project_id) or {}
 
-    def _sessions(self) -> SessionService:
-        return SessionService(self.store)
-
-    def list_sessions(
-        self,
-        project_id: str | None = None,
-        *,
-        limit: int = 50,
-    ) -> list[dict[str, Any]]:
-        return self._sessions().list_sessions(project_id, limit=limit)
-
-    def active_session(self, project_id: str) -> dict[str, Any] | None:
-        return self._sessions().active_session(project_id)
-
-    def session(self, session_id: str) -> dict[str, Any]:
-        return self._sessions().get_session(session_id)
-
-    def new_session(
-        self,
-        project_id: str,
-        *,
-        created_by: str = "manual",
-        worker_id: str | None = None,
-        title: str | None = None,
-    ) -> dict[str, Any]:
-        return self._sessions().new_session(
-            project_id,
-            created_by=created_by,
-            worker_id=worker_id,
-            title=title,
-        )
-
-    def begin_session_job(
-        self,
-        project_id: str,
-        job_id: str,
-        *,
-        source: str = "telegram",
-        worker_id: str | None = None,
-        prompt_preview: str | None = None,
-    ) -> dict[str, Any]:
-        return self._sessions().begin_job(
-            project_id,
-            job_id,
-            source=source,
-            worker_id=worker_id,
-            prompt_preview=prompt_preview,
-        )
-
-    def bind_session_thread(self, job_id: str, thread_id: str) -> dict[str, Any]:
-        return self._sessions().bind_thread(job_id, thread_id)
-
-    def recover_session_job(
-        self,
-        job_id: str,
-        *,
-        created_by: str | None = None,
-        worker_id: str | None = None,
-    ) -> dict[str, Any]:
-        return self._sessions().recover_job(
-            job_id,
-            created_by=created_by,
-            worker_id=worker_id,
-        )
-
-    def finish_session_job(
-        self,
-        job_id: str,
-        *,
-        success: bool = True,
-        error_code: str | None = None,
-        session_fatal: bool = False,
-    ) -> dict[str, Any]:
-        return self._sessions().finish_job(
-            job_id,
-            success=success,
-            error_code=error_code,
-            session_fatal=session_fatal,
-        )
-
-    def begin_session_attach(
-        self,
-        session_id: str,
-        *,
-        job_id: str | None = None,
-        worker_id: str = "desktop",
-    ) -> dict[str, Any]:
-        return self._sessions().begin_attach(
-            session_id,
-            job_id=job_id,
-            worker_id=worker_id,
-        )
-
     def dashboard(self) -> dict[str, Any]:
         projects = self.list_projects()
         active_runs = self.active_runs()
-        sessions = self.list_sessions(limit=100)
-        active_sessions = [
-            item for item in sessions if item["status"] in {"idle", "running"}
-        ]
         return {
             "db_schema_version": self.store.db_schema_version(),
             "projects": projects,
             "active_runs": active_runs,
-            "sessions": sessions,
-            "active_sessions": active_sessions,
             "project_count": len(projects),
             "active_run_count": len(active_runs),
-            "active_session_count": len(active_sessions),
         }

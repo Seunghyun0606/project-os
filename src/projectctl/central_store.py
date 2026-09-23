@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 
-CONTROL_DB_SCHEMA_VERSION = 2
+CONTROL_DB_SCHEMA_VERSION = 1
 RUN_STATUSES = {
     "RUNNING",
     "WAITING_APPROVAL",
@@ -80,12 +80,8 @@ class CentralControlStore:
                 )
             if current == 0:
                 self._create_schema_v1(connection)
-                current = 1
-                connection.execute("PRAGMA user_version = 1")
-            if current == 1:
-                self._migrate_v1_to_v2(connection)
-                current = 2
-                connection.execute("PRAGMA user_version = 2")
+                connection.execute(f"PRAGMA user_version = {CONTROL_DB_SCHEMA_VERSION}")
+                return
             if current != CONTROL_DB_SCHEMA_VERSION:
                 raise RuntimeError(
                     f"No ordered control DB migration from {current} to "
@@ -201,62 +197,6 @@ class CentralControlStore:
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY(project_id) REFERENCES projects(project_id)
             );
-            """
-        )
-
-    def _migrate_v1_to_v2(self, connection: sqlite3.Connection) -> None:
-        connection.executescript(
-            """
-            CREATE TABLE sessions (
-                session_id TEXT PRIMARY KEY,
-                project_id TEXT NOT NULL,
-                codex_session_id TEXT,
-                status TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                last_activity_at TEXT NOT NULL,
-                created_by TEXT NOT NULL,
-                worker_id TEXT,
-                last_job_id TEXT,
-                title TEXT,
-                metadata_json TEXT NOT NULL DEFAULT '{}',
-                locked_by_job_id TEXT,
-                locked_at TEXT,
-                closed_at TEXT,
-                FOREIGN KEY(project_id) REFERENCES projects(project_id)
-            );
-
-            CREATE UNIQUE INDEX idx_sessions_active_project
-                ON sessions(project_id)
-                WHERE status IN ('idle', 'running');
-            CREATE UNIQUE INDEX idx_sessions_codex_id
-                ON sessions(codex_session_id)
-                WHERE codex_session_id IS NOT NULL;
-            CREATE INDEX idx_sessions_project_activity
-                ON sessions(project_id, last_activity_at DESC);
-
-            CREATE TABLE jobs (
-                job_id TEXT PRIMARY KEY,
-                project_id TEXT NOT NULL,
-                session_id TEXT NOT NULL,
-                codex_session_id TEXT,
-                source TEXT NOT NULL,
-                worker_id TEXT,
-                execution_mode TEXT NOT NULL,
-                status TEXT NOT NULL,
-                prompt_preview TEXT,
-                error_code TEXT,
-                metadata_json TEXT NOT NULL DEFAULT '{}',
-                created_at TEXT NOT NULL,
-                started_at TEXT NOT NULL,
-                completed_at TEXT,
-                FOREIGN KEY(project_id) REFERENCES projects(project_id),
-                FOREIGN KEY(session_id) REFERENCES sessions(session_id)
-            );
-
-            CREATE INDEX idx_jobs_project_created
-                ON jobs(project_id, created_at DESC);
-            CREATE INDEX idx_jobs_session_created
-                ON jobs(session_id, created_at);
             """
         )
 

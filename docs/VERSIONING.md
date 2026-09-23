@@ -6,7 +6,7 @@ Project OS는 consumer project와 도구의 호환성을 명확히 하기 위해
 
 | Version | Current | Meaning |
 | --- | --- | --- |
-| package | `0.3.0` | 설치된 `projectctl` Python package |
+| package | `0.2.0` | 설치된 `projectctl` Python package |
 | scaffold | `0.2.0` | 새 프로젝트에 `projectctl init`으로 생성되는 consumer scaffold |
 | schema | `1` | `.project-os` canonical data contract |
 
@@ -20,7 +20,7 @@ Project OS는 consumer project와 도구의 호환성을 명확히 하기 위해
 - `VERSION`
 - `projectctl.__version__`
 
-Package에 기능을 추가하되 기존 공개 동작을 깨지 않는 경우 minor version을 올립니다. Persistent Project Session 기능은 이 규칙에 따라 package 0.3.0으로 추가되며 scaffold 0.2.0은 그대로 유지합니다.
+Package에 기능을 추가하되 기존 공개 동작을 깨지 않는 경우 minor version을 올립니다.
 
 ## Scaffold version
 
@@ -43,7 +43,7 @@ Git에 저장되는 canonical Project OS data contract의 버전입니다.
 
 `.project-os/manifest.yaml`의 `project_os.schema_version`에 기록합니다.
 
-현재 0.3.0 package도 기존 canonical YAML 형식을 깨지 않으므로 schema version은 `1`을 유지합니다.
+현재 0.2.0 release는 기존 canonical YAML 형식을 깨지 않으므로 schema version은 `1`을 유지합니다.
 
 Breaking file-format change가 발생할 때만 schema version을 올리고, 반드시 ordered migration을 함께 제공합니다.
 
@@ -60,7 +60,7 @@ project_os:
   package_compatibility: ">=0.2,<1.0"
 ```
 
-기존 0.1.x/0.2.x consumer repository를 0.3.0 package로 읽는 것은 호환됩니다. 기존 manifest를 새 scaffold로 덮어쓰지 않습니다.
+기존 0.1.x consumer repository를 0.2.0 package로 읽는 것은 호환됩니다. 기존 manifest를 새 scaffold로 덮어쓰지 않습니다.
 
 ## Upgrade rule
 
@@ -79,7 +79,7 @@ project_os:
 
 Phase 6의 SQLite control DB는 consumer schema와 별개의 runtime/operational database입니다.
 
-현재 control DB schema version은 `2`이며 SQLite `PRAGMA user_version`으로 관리합니다. v1→v2는 `sessions`와 `jobs`를 추가하는 ordered migration이며 consumer canonical schema version `1`은 변경하지 않습니다.
+현재 control DB schema version은 `1`이며 SQLite `PRAGMA user_version`으로 관리합니다.
 
 이 버전은 package/scaffold/schema 세 버전과 별개입니다. 중앙 DB가 유실되어도 consumer Git repository의 canonical project state는 유지되어야 합니다.
 

@@ -4,7 +4,7 @@
 
 Project OS is a project-management scaffold for long-running agent work. It owns project memory, task contracts, quality policy and deterministic state rules.
 
-It does **not** own messenger network transport, host routing, remote shell transport or machine lifecycle. It may own cross-channel Project Session identity, persistence, locking and runtime-to-Codex thread binding as operational control-plane state.
+It does **not** own remote execution, messenger gateways, host routing or machine lifecycle.
 
 ## Layers
 
@@ -118,30 +118,3 @@ Central operational data includes runs, events, usage/cost and evaluation histor
 The control database has an independent schema version through SQLite `PRAGMA user_version`. Consumer schema compatibility and migration need are observed centrally, but consumer files are not automatically upgraded or overwritten.
 
 The default control DB lives outside consumer repositories at `~/.project-os/control.db`.
-
-
-## Persistent Project Sessions
-
-Project Session is an operational control-plane entity between interaction channels and a concrete agent runtime session.
-
-```text
-Telegram / Desktop / other channel
-              |
-       Project Session
-              |
-       Codex thread id
-              |
-        Job -> Job -> Job
-```
-
-This is intentionally different from both canonical project memory and workflow `run_id`.
-
-- Canonical project memory: Git-managed source of truth.
-- Project Session: short/medium-lived work context shared across channels.
-- Job: one user request/execution unit linked to a Project Session.
-- Codex thread: provider/runtime-specific session identifier bound to the Project Session.
-- Workflow run: Phase 4 orchestration checkpoint lifecycle.
-
-Project Sessions live in the central operational DB, not in the consumer scaffold. A project can have many historical sessions but at most one active `idle/running` session at a time. Session rollover closes the previous idle session and creates a new lazy session whose Codex thread is created by the next job.
-
-The Session layer remains runtime-agnostic at its storage boundary. Codex-specific command construction and `thread.started` parsing live in a small adapter.

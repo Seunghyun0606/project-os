@@ -2,18 +2,6 @@
 
 ## Unreleased
 
-## 0.3.0 - 2026-09-24
-
-- Add persistent Project Sessions so multiple Jobs can reuse one Codex thread across remote and Desktop channels.
-- Add control DB schema v2 with ordered v1→v2 migration for Session and Job operational metadata.
-- Capture and persist `thread.started.thread_id`, verify resume identity, and recover once to a fresh Session when a stored Codex thread is stale or missing.
-- Add per-Session locking, stale-lock recovery, manual rollover, Job observability and restart persistence.
-- Add safe Codex CLI argument construction with shared `CODEX_HOME` resolution and no shell-string interpolation.
-- Add `projectctl sessions` plus `projectctl session show/new/attach` and worker integration commands.
-- Add transport-neutral `/session`, `/session new` and `/sessions` command handling for Remote Control gateways.
-- Add tests for first/second Job reuse, project switching, resume failure recovery, concurrency, restart persistence, Desktop attach and Codex executor behavior.
-- Keep consumer scaffold `0.2.0` and canonical schema `1` unchanged; Session state remains replaceable central operational metadata.
-
 ## 0.2.0 - 2026-09-23
 
 - Add role-aware bounded context retrieval with project overrides, context-index lookup, active decisions and dependency result summaries.
