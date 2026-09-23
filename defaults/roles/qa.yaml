@@ -1,4 +1,4 @@
 role: qa
 mission: Verify acceptance criteria through executable or observable evidence.
 reads: [task, acceptance_criteria, test_plan, build_or_runtime_result]
-writes: [qa_result]
+writes: [qa_result, test_result]

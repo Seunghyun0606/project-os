@@ -83,3 +83,38 @@ NativeOrchestrator
 ```
 
 The orchestrator never mutates canonical project state directly. Any future business workflow that needs to change task state must go through the Phase 3 validated handoff and single-writer path.
+
+
+## Multi-harness application boundary
+
+Phase 5 adds a harness-neutral application service:
+
+```text
+CLI -------\
+MCP --------> ProjectService -> scheduler/context/handoffs/quality/state writer
+Other -----/
+```
+
+Adapters may translate protocol shapes, but they must not implement their own scheduling, permissions, quality decisions or YAML mutation logic.
+
+The MCP adapter deliberately exposes business-intent tools and no unrestricted file/state mutation surface.
+
+
+## Central control plane
+
+Phase 6 adds an optional control plane above multiple consumer repositories.
+
+```text
+repo A ---\
+repo B ----> CentralControlService ---> SQLite operational metadata
+repo C ---/             |
+                        +--> central checkpoint/event/approval adapters
+```
+
+The registry stores compact snapshots and paths, not copies of project planning documents.
+
+Central operational data includes runs, events, usage/cost and evaluation history. Canonical project state remains in each Git repository.
+
+The control database has an independent schema version through SQLite `PRAGMA user_version`. Consumer schema compatibility and migration need are observed centrally, but consumer files are not automatically upgraded or overwritten.
+
+The default control DB lives outside consumer repositories at `~/.project-os/control.db`.

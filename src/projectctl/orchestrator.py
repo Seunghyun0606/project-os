@@ -4,7 +4,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .interfaces import AgentRunner
+from .interfaces import (
+    AgentRunner,
+    ApprovalGateway,
+    CheckpointStore,
+    EventStore,
+)
 from .runtime_stores import FileApprovalGateway, FileCheckpointStore, FileEventStore
 from .workflow import FileWorkflowRegistry, WorkflowDefinition
 
@@ -15,8 +20,17 @@ _TERMINAL = {"COMPLETED", "REJECTED"}
 class NativeOrchestrator:
     """Framework-neutral sequential workflow runner with durable runtime checkpoints."""
 
-    def __init__(self, runner: AgentRunner):
+    def __init__(
+        self,
+        runner: AgentRunner,
+        checkpoint_store: CheckpointStore | None = None,
+        event_store: EventStore | None = None,
+        approval_gateway: ApprovalGateway | None = None,
+    ):
         self.runner = runner
+        self.checkpoint_store = checkpoint_store
+        self.event_store = event_store
+        self.approval_gateway = approval_gateway
 
     def _result(self, state: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -50,9 +64,9 @@ class NativeOrchestrator:
     ) -> dict[str, Any]:
         root = project_root.resolve()
         definition = FileWorkflowRegistry(root).load(workflow)
-        checkpoints = FileCheckpointStore(root)
-        events = FileEventStore(root)
-        approvals = FileApprovalGateway(root)
+        checkpoints = self.checkpoint_store or FileCheckpointStore(root)
+        events = self.event_store or FileEventStore(root)
+        approvals = self.approval_gateway or FileApprovalGateway(root)
 
         resolved_run_id = run_id or f"run-{uuid4().hex}"
         state = checkpoints.load_checkpoint(resolved_run_id)

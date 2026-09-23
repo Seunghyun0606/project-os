@@ -229,11 +229,14 @@ projectctl submit TASK-001 FILE # 구조화된 작업 결과 제출
 projectctl compact-runs --keep-recent 20 # 오래된 run 기록 요약/보관
 projectctl role-policy developer # 역할별 권한 확인
 projectctl review TASK-001 review.yaml --actor reviewer-1
+projectctl record-test TASK-001 tests.yaml --actor ci
 projectctl qa TASK-001 qa.yaml --actor qa-1
 projectctl evaluate TASK-001 evaluation.yaml --actor evaluator-1
 projectctl runtime-status run-001
 projectctl approval-status approval-...
 projectctl approval-resolve approval-... approved
+projectctl control register /path/to/project
+projectctl control dashboard
 ```
 
 context package는 역할별 기본 정책과 프로젝트 override를 합쳐 필요한 spec·파일·활성 Decision·선행 Task 결과 요약만 읽습니다. 전체 저장소를 기본으로 스캔하지 않으며 역할별 token budget을 넘으면 deterministic하게 잘라냅니다.
@@ -245,6 +248,10 @@ context package는 역할별 기본 정책과 프로젝트 override를 합쳐 �
 Phase 3부터 worker 결과와 승인 결과를 분리합니다. `submit`은 implementation handoff만 저장하며 Task를 완료하지 않습니다. reviewer/QA/evaluator는 별도 handoff를 기록하고, 최종 상태 변경은 `evaluate`를 통해 single-writer state transition으로만 수행됩니다. 같은 actor가 자신의 implementation을 review/evaluate하는 것은 차단됩니다. 자세한 내용은 `docs/ROLES_AND_HANDOFFS.md`를 참고하세요.
 
 Phase 4의 native orchestrator는 workflow 실행을 checkpoint 단위로 재개할 수 있습니다. 실행 중 checkpoint/event/approval은 `.project-os/runs/runtime/`에만 저장되며 canonical backlog/state를 직접 수정하지 않습니다. 따라서 orchestration backend를 교체해도 프로젝트 정본은 그대로 유지됩니다. 자세한 내용은 `docs/ORCHESTRATION.md`를 참고하세요.
+
+Phase 5에서는 CLI와 다른 Agent harness가 같은 규칙을 사용하도록 `ProjectService`를 공통 진입점으로 둡니다. MCP 쪽도 별도 상태 변경 로직을 갖지 않고 이 service를 호출하는 얇은 adapter만 제공합니다. 자동 테스트 결과는 implementation과 별도 evidence로 기록됩니다. 자세한 내용은 `docs/MULTI_HARNESS.md`를 참고하세요.
+
+여러 Project OS 저장소를 함께 관리해야 할 때는 `projectctl control`을 사용할 수 있습니다. 중앙 DB는 프로젝트 등록 정보, 실행 상태, 비용, 평가 이력 같은 요약 정보만 관리하며 backlog·spec·decision의 정본을 가져가지 않습니다. 기본 DB는 저장소 밖의 `~/.project-os/control.db`입니다. 자세한 내용은 `docs/CENTRAL_CONTROL.md`를 참고하세요.
 
 초기 버전에서는 Project OS의 상태와 규칙 관리에 집중합니다. 실제 LLM 실행기, LangGraph, Agents SDK, MCP, Remote Worker는 Project OS core와 분리된 adapter로 확장할 수 있도록 설계합니다.
 
