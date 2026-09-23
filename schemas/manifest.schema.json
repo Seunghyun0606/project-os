@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Project OS Manifest",
+  "type": "object",
+  "required": ["project_os", "project", "profile", "sources"],
+  "properties": {
+    "project_os": {
+      "type": "object",
+      "required": ["scaffold_version", "schema_version"],
+      "properties": {
+        "scaffold_version": {"type": "string"},
+        "schema_version": {"type": "string"},
+        "package_compatibility": {"type": "string"}
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1}
+      }
+    },
+    "profile": {"type": "string"},
+    "sources": {"type": "object"}
+  }
+}

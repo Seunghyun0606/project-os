@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Project OS Task Result",
+  "type": "object",
+  "required": ["task", "status", "summary"],
+  "properties": {
+    "task": {"type": "string"},
+    "status": {"enum": ["pass", "fail", "blocked", "rework", "human_gate"]},
+    "summary": {"type": "string"},
+    "files_changed": {"type": "array", "items": {"type": "string"}},
+    "verification": {"type": "object"},
+    "followups": {"type": "array"}
+  }
+}
