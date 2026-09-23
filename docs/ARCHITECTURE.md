@@ -83,3 +83,18 @@ NativeOrchestrator
 ```
 
 The orchestrator never mutates canonical project state directly. Any future business workflow that needs to change task state must go through the Phase 3 validated handoff and single-writer path.
+
+
+## Multi-harness application boundary
+
+Phase 5 adds a harness-neutral application service:
+
+```text
+CLI -------\
+MCP --------> ProjectService -> scheduler/context/handoffs/quality/state writer
+Other -----/
+```
+
+Adapters may translate protocol shapes, but they must not implement their own scheduling, permissions, quality decisions or YAML mutation logic.
+
+The MCP adapter deliberately exposes business-intent tools and no unrestricted file/state mutation surface.
