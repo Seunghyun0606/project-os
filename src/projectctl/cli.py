@@ -413,6 +413,7 @@ def control_usage_record(
     project_id: str,
     provider: str,
     model: str,
+    role: Optional[str] = typer.Option(None, "--role"),
     input_tokens: int = typer.Option(0, "--input-tokens"),
     output_tokens: int = typer.Option(0, "--output-tokens"),
     cost: float = typer.Option(0.0, "--cost"),
@@ -427,6 +428,7 @@ def control_usage_record(
             project_id=project_id,
             provider=provider,
             model=model,
+            role=role,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             cost=cost,
@@ -447,6 +449,17 @@ def control_usage(
 ) -> None:
     """Show aggregated model token/cost usage."""
     _echo_payload(_control(db).store.usage_summary(project_id, run_id), json_output)
+
+
+@control_app.command("budget")
+def control_budget(
+    project_id: str,
+    role: str,
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Show role model-policy budget usage without changing project state."""
+    _echo_payload(_control(db).model_budget_status(project_id, role), json_output)
 
 
 @control_app.command("eval-record")
