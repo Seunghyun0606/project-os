@@ -13,6 +13,10 @@ def test_install_scaffold_copies_only_consumer_files(tmp_path: Path):
     assert (tmp_path / "AGENTS.md").exists()
     assert (tmp_path / ".project-os/manifest.yaml").exists()
     assert (tmp_path / "specs/product").is_dir()
+    assert (tmp_path / ".project-os/workflows").is_dir()
+    assert (tmp_path / ".project-os/runs/runtime/checkpoints").is_dir()
+    assert (tmp_path / ".project-os/runs/runtime/events").is_dir()
+    assert (tmp_path / ".project-os/runs/runtime/approvals").is_dir()
 
     assert not (tmp_path / "src").exists()
     assert not (tmp_path / "defaults").exists()

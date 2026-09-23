@@ -1,0 +1,14 @@
+profile: production
+required:
+  build: true
+  lint: true
+  typecheck: true
+  unit_test: true
+  integration_test: true
+  independent_review: true
+  acceptance_evidence: true
+  qa: true
+thresholds:
+  critical_issues: 0
+completion:
+  require_all_configured_gates: true

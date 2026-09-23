@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Project OS Structured Handoff",
+  "type": "object",
+  "required": ["task", "kind", "role", "actor"],
+  "properties": {
+    "task": {"type": "string"},
+    "kind": {"enum": ["implementation", "review", "qa", "test", "evaluation"]},
+    "role": {"enum": ["planner", "architect", "developer", "reviewer", "qa", "evaluator"]},
+    "actor": {"type": "string", "minLength": 1},
+    "status": {"type": "string"},
+    "decision": {"enum": ["PASS", "REWORK", "HUMAN_GATE"]},
+    "summary": {"type": "string"},
+    "evidence": {"type": "array"},
+    "verification": {"type": "object"},
+    "critical_issues": {"type": "integer", "minimum": 0}
+  }
+}
