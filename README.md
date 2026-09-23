@@ -47,6 +47,7 @@ python -m pip install -e .
 
 ```bash
 projectctl version
+# 0.2.0
 ```
 
 ### 2. 기존 프로젝트에 scaffold 추가
@@ -62,6 +63,7 @@ projectctl init
 ```text
 PROJECT.md
 AGENTS.md
+specs/
 .project-os/
 ├─ manifest.yaml
 ├─ profile.yaml
@@ -69,10 +71,16 @@ AGENTS.md
 │  ├─ current.yaml
 │  ├─ roadmap.yaml
 │  └─ backlog.yaml
+├─ tasks/
+├─ decisions/
 ├─ quality/
 │  └─ gates.yaml
-└─ context/
-   └─ index.yaml
+├─ context/
+│  └─ index.yaml
+├─ workflows/
+└─ runs/
+   ├─ summaries/
+   └─ runtime/
 ```
 
 작업 중 필요한 빈 디렉터리도 함께 준비됩니다.
@@ -253,7 +261,7 @@ Phase 5에서는 CLI와 다른 Agent harness가 같은 규칙을 사용하도록
 
 여러 Project OS 저장소를 함께 관리해야 할 때는 `projectctl control`을 사용할 수 있습니다. 중앙 DB는 프로젝트 등록 정보, 실행 상태, 비용, 평가 이력 같은 요약 정보만 관리하며 backlog·spec·decision의 정본을 가져가지 않습니다. 기본 DB는 저장소 밖의 `~/.project-os/control.db`입니다. 자세한 내용은 `docs/CENTRAL_CONTROL.md`를 참고하세요.
 
-초기 버전에서는 Project OS의 상태와 규칙 관리에 집중합니다. 실제 LLM 실행기, LangGraph, Agents SDK, MCP, Remote Worker는 Project OS core와 분리된 adapter로 확장할 수 있도록 설계합니다.
+Project OS core는 특정 LLM 실행기나 orchestration framework에 종속되지 않습니다. MCP는 현재 얇은 adapter로 제공하며, LangGraph·Agents SDK 같은 framework는 실제 필요가 생길 때 동일한 core contract 위에 adapter로 추가합니다. Remote Worker와 메신저/호스트 제어는 계속 별도 시스템의 책임입니다.
 
 ## Scaffold와 Project OS 개발 파일 구분
 
@@ -274,15 +282,19 @@ Phase 5에서는 CLI와 다른 Agent harness가 같은 규칙을 사용하도록
 
 ## 버전 관리
 
-Project OS는 세 버전을 구분합니다.
+Project OS는 package, scaffold, schema version을 구분합니다.
 
-- **package version**: projectctl 도구 버전
-- **scaffold version**: 새 프로젝트에 배포되는 scaffold 버전
-- **schema version**: `.project-os` 파일 형식 버전
+| 구분 | 현재 | 의미 |
+| --- | --- | --- |
+| package | `0.2.0` | `projectctl` 도구 버전 |
+| scaffold | `0.2.0` | 새 프로젝트에 생성되는 scaffold 버전 |
+| schema | `1` | canonical `.project-os` 데이터 형식 |
 
-기존 프로젝트가 Project OS 새 버전으로 올라갈 때 scaffold 전체를 다시 덮어쓰지 않습니다. 변경된 schema와 필요한 migration만 적용하는 것을 원칙으로 합니다.
+새 0.2.0 scaffold는 `projectctl >=0.2,<1.0`을 요구합니다. 기존 0.1.x consumer repository는 0.2.0 package로 계속 읽을 수 있으며, 기존 프로젝트에 최신 scaffold를 통째로 덮어쓰지 않습니다.
 
-자세한 내용은 `docs/VERSIONING.md`를 참고하세요.
+Phase 6의 중앙 SQLite DB schema는 consumer schema와 별도로 관리되며 현재 version은 `1`입니다.
+
+자세한 호환성과 upgrade 원칙은 `docs/VERSIONING.md`를 참고하세요.
 
 ## 설계 원칙
 
@@ -291,6 +303,6 @@ Project OS는 세 버전을 구분합니다.
 - 전체 저장소를 매번 읽지 않는다.
 - LLM이 필요 없는 판단은 코드로 처리한다.
 - Agent는 자기 작업을 스스로 승인하지 않는다.
-- 작업 완료는 자동 검증 결과로 판단한다.
+- 작업 완료는 설정된 evidence와 quality gate로 판단한다.
 - 특정 모델, Codex, LangGraph에 Project OS 자체를 종속시키지 않는다.
 - Remote 실행과 메신저 제어는 별도 시스템의 책임으로 둔다.

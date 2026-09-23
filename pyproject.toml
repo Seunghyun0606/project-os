@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "project-os"
-version = "0.1.0"
+version = "0.2.0"
 description = "Project-scoped memory, task contracts and deterministic controls for long-running AI agent work."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -28,6 +28,9 @@ def test_install_scaffold_copies_only_consumer_files(tmp_path: Path):
     )
     assert manifest["project"]["id"] == "demo"
     assert manifest["project"]["name"] == "Demo"
+    assert manifest["project_os"]["scaffold_version"] == "0.2.0"
+    assert manifest["project_os"]["schema_version"] == "1"
+    assert manifest["project_os"]["package_compatibility"] == ">=0.2,<1.0"
 
 
 def test_install_scaffold_protects_existing_project_file(tmp_path: Path):
