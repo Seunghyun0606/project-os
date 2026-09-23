@@ -235,6 +235,9 @@ class FileContextBuilder:
 
         package = ContextPackage(
             **base,
+            project_file="PROJECT.md",
+            specs=list(task.get("specs", []) or []),
+            relevant_files=list(task.get("relevant_files", []) or []),
             resources=selected,
             estimated_tokens=estimated,
             truncated=truncated,
