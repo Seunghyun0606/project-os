@@ -135,6 +135,8 @@ class EvaluationService:
         if implementation is None:
             raise ValueError(f"Task {task_id} has no implementation result")
 
+        self.state.validate_evaluation(task_id, decision)
+
         if decision == "PASS":
             quality = QualityGateEvaluator(self.project).check(task_id)
             if not quality["passed"]:
