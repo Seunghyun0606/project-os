@@ -10,7 +10,7 @@ project:
 profile: default
 
 sources:
-  project: "../../PROJECT.md"
+  project: "../PROJECT.md"
   state: "state/current.yaml"
   roadmap: "state/roadmap.yaml"
   backlog: "state/backlog.yaml"
