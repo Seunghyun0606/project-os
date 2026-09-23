@@ -36,6 +36,7 @@ class NativeOrchestrator:
             "status": "RUNNING",
             "next_step": 0,
             "completed_steps": [],
+            "approved_steps": [],
             "outputs": {},
             "pending_approval": None,
             "error": None,
@@ -85,7 +86,7 @@ class NativeOrchestrator:
             index = int(state.get("next_step", 0))
             step = definition.steps[index]
 
-            if step.approval_gate:
+            if step.approval_gate and step.id not in set(state.get("approved_steps", []) or []):
                 pending = state.get("pending_approval")
                 if pending and pending.get("step_id") == step.id:
                     approval_id = str(pending["approval_id"])
@@ -107,6 +108,7 @@ class NativeOrchestrator:
                         return self._result(state)
 
                     state["pending_approval"] = None
+                    state.setdefault("approved_steps", []).append(step.id)
                     state["status"] = "RUNNING"
                     checkpoints.save_checkpoint(resolved_run_id, state)
                     events.append_event({
