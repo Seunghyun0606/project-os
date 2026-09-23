@@ -282,6 +282,14 @@ class CentralControlStore:
                 (project_id,),
             ).fetchone() is None:
                 raise KeyError(f"Unknown registered project: {project_id}")
+            existing = connection.execute(
+                "SELECT project_id FROM runs WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+            if existing and str(existing["project_id"]) != project_id:
+                raise ValueError(
+                    f"Run {run_id} is already registered to project {existing['project_id']}"
+                )
             connection.execute(
                 """
                 INSERT INTO runs (
