@@ -16,6 +16,7 @@ HANDOFF_SUFFIX = {
     "implementation": "",
     "review": ".review",
     "qa": ".qa",
+    "test": ".tests",
     "evaluation": ".evaluation",
 }
 
@@ -23,6 +24,7 @@ HANDOFF_CAPABILITY = {
     "implementation": "task_result",
     "review": "review_result",
     "qa": "qa_result",
+    "test": "test_result",
     "evaluation": "evaluation_result",
 }
 
