@@ -31,18 +31,25 @@ class CentralControlStore:
 
     def __init__(self, path: Path | str):
         self.path = str(path)
-        if self.path != ":memory:":
+        self._memory_connection: sqlite3.Connection | None = None
+        if self.path == ":memory:":
+            self._memory_connection = sqlite3.connect(":memory:", timeout=30)
+            self._memory_connection.row_factory = sqlite3.Row
+            self._memory_connection.execute("PRAGMA foreign_keys = ON")
+            self._memory_connection.execute("PRAGMA busy_timeout = 30000")
+        else:
             Path(self.path).expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
             self.path = str(Path(self.path).expanduser().resolve())
         self._migrate()
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
-        connection = sqlite3.connect(self.path, timeout=30)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
-        connection.execute("PRAGMA busy_timeout = 30000")
-        if self.path != ":memory:":
+        owned = self._memory_connection is None
+        connection = self._memory_connection or sqlite3.connect(self.path, timeout=30)
+        if owned:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA foreign_keys = ON")
+            connection.execute("PRAGMA busy_timeout = 30000")
             connection.execute("PRAGMA journal_mode = WAL")
         try:
             yield connection
@@ -51,7 +58,8 @@ class CentralControlStore:
             connection.rollback()
             raise
         finally:
-            connection.close()
+            if owned:
+                connection.close()
 
     def _migrate(self) -> None:
         with self.connect() as connection:
