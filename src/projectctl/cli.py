@@ -29,14 +29,22 @@ def version() -> None:
 
 @app.command("init")
 def init_project(
-    project_id: str = typer.Option(..., "--project-id", help="Stable project id."),
+    project_id: Optional[str] = typer.Option(None, "--project-id", help="Stable project id."),
     name: Optional[str] = typer.Option(None, "--name", help="Human-readable project name."),
     path: Path = typer.Option(Path("."), "--path", help="Target project root."),
     force: bool = typer.Option(False, "--force", help="Overwrite existing scaffold files."),
 ) -> None:
     """Install only the consumer scaffold into a project."""
-    install_scaffold(path, project_id=project_id, project_name=name or project_id, force=force)
-    typer.echo(f"Project OS scaffold installed at {path.resolve()}")
+    target = path.resolve()
+    resolved_id = project_id or target.name.lower().replace(" ", "-")
+    resolved_name = name or target.name
+    install_scaffold(
+        target,
+        project_id=resolved_id,
+        project_name=resolved_name,
+        force=force,
+    )
+    typer.echo(f"Project OS scaffold installed at {target}")
 
 
 @app.command()
