@@ -6,6 +6,9 @@
 - Add package compatibility checks to `projectctl doctor`.
 - Add tests for context boundaries, token budgets and submit-without-completion behavior.
 - Add deterministic run-history compaction with reversible raw-history archiving.
+- Add Phase 3 role permission resolution, structured implementation/review/QA/evaluation handoffs and actor separation.
+- Centralize claim/evaluation canonical task-state transitions behind a single writer.
+- Add prototype and production quality profiles plus deterministic configured-gate evaluation.
 
 ## 0.1.0 - 2026-09-23
 
