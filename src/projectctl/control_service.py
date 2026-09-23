@@ -136,6 +136,7 @@ class CentralControlService:
         project_id: str,
         provider: str,
         model: str,
+        role: str | None = None,
         input_tokens: int = 0,
         output_tokens: int = 0,
         cost: float = 0.0,
@@ -146,6 +147,7 @@ class CentralControlService:
             project_id=project_id,
             provider=provider,
             model=model,
+            role=role,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             cost=cost,
@@ -153,6 +155,9 @@ class CentralControlService:
             run_id=run_id,
         )
         return self.store.usage_summary(project_id, run_id=run_id)
+
+    def model_budget_status(self, project_id: str, role: str) -> dict[str, Any]:
+        return self.store.model_budget_status(project_id, role)
 
     def record_evaluation(
         self,
