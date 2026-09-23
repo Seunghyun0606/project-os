@@ -6,7 +6,7 @@ This repository develops Project OS itself.
 
 - `scaffold/default/` is the only content copied into consumer projects.
 - `src/`, `defaults/`, `schemas/`, `docs/`, `tests/`, root version files and CI are Project OS development files.
-- Remote execution, messenger network gateways, host routing and Lightsail/Desktop machine control are out of scope here. Cross-channel Project Session identity/persistence/locking and Codex thread binding are control-plane concerns and may be implemented here behind transport-neutral services.
+- Remote execution, messenger gateways, host routing and Lightsail/Desktop control are out of scope here.
 
 ## Development rules
 
