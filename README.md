@@ -85,46 +85,183 @@ specs/
 
 작업 중 필요한 빈 디렉터리도 함께 준비됩니다.
 
-### 3. 프로젝트 기획 입력
+### 3. 최초 기획문서 넣기
 
-먼저 `PROJECT.md`에 다음 내용을 적습니다.
+이미 작성한 기획안이 있다면 원문 전체를 `PROJECT.md`에 복사하지 말고 `specs/product/` 아래에 둡니다.
 
-- 무엇을 만드는지
-- 누구를 위한 것인지
-- 가장 중요한 사용자 경험
-- 이번 프로젝트에서 하지 않을 것
-- 중요한 제품/기술 원칙
+권장 시작 파일:
 
-그 다음 `.project-os/state/roadmap.yaml`에 큰 단계(Milestone)를 정의하고, `backlog.yaml`에 작업을 추가합니다.
+```text
+specs/product/00-initial-plan.md
+```
 
-### 4. 상태 확인
+여러 기획 자료가 있다면 다음처럼 나눌 수 있습니다.
+
+```text
+specs/product/
+├─ 00-initial-plan.md
+├─ 01-market-research.md
+├─ 02-product-concept.md
+└─ 03-business-model.md
+```
+
+파일의 역할은 다음과 같이 구분합니다.
+
+```text
+최초 기획 원문
+    ↓
+specs/product/00-initial-plan.md
+    ↓ Codex가 구조화
+PROJECT.md                    # 장기 방향
+    ↓
+.project-os/state/roadmap.yaml # 큰 실행 단계
+    ↓
+.project-os/state/backlog.yaml # 실행 가능한 Task 목록
+    ↓
+.project-os/tasks/             # Task별 작업 계약
+    ↓
+실제 구현
+```
+
+`PROJECT.md`에는 기획서 원문 전체가 아니라 세션이 바뀌어도 계속 유지해야 할 핵심만 둡니다.
+
+- Vision
+- Target User
+- Core Experience
+- Product Principles
+- Non-goals
+- Success Definition
+
+### 4. Codex로 최초 Bootstrap
+
+최초 기획문서를 넣은 뒤에는 바로 개발시키기보다, 먼저 기획안을 Project OS 구조로 변환합니다.
+
+Codex에 다음 프롬프트를 전달합니다.
+
+```text
+이 저장소는 Project OS를 사용한다.
+
+먼저 다음 파일을 순서대로 읽어라.
+
+1. AGENTS.md
+2. PROJECT.md
+3. .project-os/manifest.yaml
+4. .project-os/profile.yaml
+5. specs/product/00-initial-plan.md
+6. .project-os/state/current.yaml
+7. .project-os/state/roadmap.yaml
+8. .project-os/state/backlog.yaml
+
+이번 작업의 목적은 개발을 바로 시작하는 것이 아니라,
+specs/product/00-initial-plan.md의 최초 기획안을 Project OS 구조로 정리하는 것이다.
+
+다음을 수행해라.
+
+1. 최초 기획안에서 장기간 유지해야 할 핵심 내용을 추출해서 PROJECT.md를 보완한다.
+   - Vision
+   - Target User
+   - Core Experience
+   - Product Principles
+   - Non-goals
+   - Success Definition
+
+2. 기획안을 구현 가능한 큰 단계로 분해해서
+   .project-os/state/roadmap.yaml에 Milestone을 정의한다.
+
+3. 첫 번째 Milestone을 수행하기 위한 작업들을
+   .project-os/state/backlog.yaml에 Task 단위로 분해한다.
+
+4. 실제 작업 계약이 필요한 Task에 대해
+   .project-os/tasks/ 아래에 Task 문서를 생성한다.
+
+5. 별도 상세 문서가 필요한 내용은
+   specs/product/, specs/feature/, specs/ux/, specs/architecture/
+   아래에 적절히 분리한다.
+
+6. 이미 확정된 중요한 설계 선택은
+   .project-os/decisions/에 Decision으로 기록한다.
+
+7. 같은 내용을 여러 파일에 복사하지 마라.
+   PROJECT.md에는 장기 방향만,
+   specs에는 상세 요구사항을,
+   state에는 현재 상태와 작업 순서만 둔다.
+
+8. 개발을 막지 않는 모호함은 합리적인 기본값으로 진행하고,
+   제품 방향을 바꾸는 수준의 모호함만 Human Gate로 남긴다.
+
+9. 구조화가 끝난 후 projectctl doctor를 실행하고 오류를 수정한다.
+
+10. 이번 단계에서는 기능 구현을 시작하지 마라.
+
+마지막에 다음만 보고한다.
+
+- 정리한 PROJECT.md 핵심
+- 생성한 Milestone
+- 생성한 Task 목록
+- 생성/수정한 spec과 decision
+- Human Gate가 필요한 항목
+- 다음 실행 가능한 Task
+```
+
+Bootstrap이 끝나면 다음 상태가 되어야 합니다.
+
+```text
+기획 원본         ✓
+PROJECT.md        ✓
+Roadmap           ✓
+Backlog           ✓
+Task contracts    ✓
+Specs / Decisions ✓
+```
+
+### 5. 상태 확인 후 개발 시작
+
+Bootstrap 완료 후 구조를 검사합니다.
 
 ```bash
 projectctl status
 projectctl doctor
-```
-
-다음 개발 작업 확인:
-
-```bash
 projectctl next --role developer
 ```
 
-### 5. Codex에서 사용
-
-새 세션에서도 저장소 루트의 `AGENTS.md`를 시작점으로 사용합니다.
-
-일반적으로 사용자는 길게 설명할 필요 없이 다음과 같이 요청할 수 있습니다.
+이후 Codex 세션에서는 긴 최초 기획안을 매번 다시 전달할 필요가 없습니다.
 
 ```text
-현재 Project OS 상태를 기준으로 다음 작업을 계속 진행해.
+현재 Project OS 상태를 기준으로 다음 실행 가능한 작업을 진행해.
+AGENTS.md와 Project OS의 canonical state를 준수하고,
+필요한 context만 읽어서 작업해.
 ```
 
-에이전트는 `PROJECT.md → .project-os/manifest.yaml → 현재 상태 → 현재 Task` 순서로 필요한 정보만 읽습니다.
+조금 더 명시적으로 실행시키려면:
+
+```text
+projectctl doctor로 상태를 확인하고,
+projectctl next --role developer 기준 다음 Task를 진행해.
+완료 후 evidence를 남기고 Project OS 상태를 갱신해.
+```
+
+새 세션에서도 저장소 루트의 `AGENTS.md`를 시작점으로 사용합니다. 에이전트는 전체 대화 이력 대신 `PROJECT.md → .project-os/manifest.yaml → 현재 상태 → 현재 Task` 순서로 필요한 정보만 읽어 현재 상태를 복구합니다.
 
 ---
 
 ## 상세 가이드
+
+### 최초 기획문서와 Project OS의 관계
+
+최초 기획서는 상세 원본이므로 `specs/product/`에 보존합니다. Project OS bootstrap 과정은 이 원본을 삭제하거나 대체하는 것이 아니라, 장기적으로 반복해서 읽어야 하는 정보만 적절한 위치로 분해하는 과정입니다.
+
+| 내용 | 위치 |
+| --- | --- |
+| 최초 기획 원문 | `specs/product/00-initial-plan.md` |
+| 프로젝트의 장기 방향 | `PROJECT.md` |
+| 상세 기능/UX/기술 요구사항 | `specs/` |
+| 큰 실행 단계 | `.project-os/state/roadmap.yaml` |
+| 실행 후보 Task | `.project-os/state/backlog.yaml` |
+| Task별 작업 계약 | `.project-os/tasks/` |
+| 확정된 중요한 선택 | `.project-os/decisions/` |
+| 현재 진행 위치 | `.project-os/state/current.yaml` |
+
+즉, 기획서 원문을 하나의 거대한 canonical 파일로 사용하는 대신 **원문은 보존하고, Project OS가 실행에 필요한 형태로 구조화**합니다.
 
 ### PROJECT.md
 
