@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from importlib.resources import files
 from pathlib import Path
+from typing import Iterator, Tuple
 
 
 EMPTY_DIRECTORIES = [
@@ -21,7 +22,27 @@ EMPTY_DIRECTORIES = [
 
 
 def scaffold_root():
-    return files("projectctl").joinpath("_scaffold", "default")
+    packaged = files("projectctl").joinpath("_scaffold", "default")
+    if packaged.is_dir():
+        return packaged
+
+    development = Path(__file__).resolve().parents[2] / "scaffold" / "default"
+    if development.is_dir():
+        return development
+
+    raise RuntimeError("Project OS scaffold resources were not packaged correctly.")
+
+
+def iter_files(root) -> Iterator[Tuple[object, Path]]:
+    def walk(current, prefix: Path):
+        for entry in current.iterdir():
+            relative = prefix / entry.name
+            if entry.is_dir():
+                yield from walk(entry, relative)
+            elif entry.is_file():
+                yield entry, relative
+
+    yield from walk(root, Path())
 
 
 def install_scaffold(
@@ -33,11 +54,8 @@ def install_scaffold(
     target = target.resolve()
     template = scaffold_root()
 
-    for entry in template.rglob("*"):
-        if not entry.is_file():
-            continue
-        relative = entry.relative_to(template)
-        destination = target / str(relative)
+    for entry, relative in iter_files(template):
+        destination = target / relative
         if destination.exists() and not force:
             raise FileExistsError(
                 f"Refusing to overwrite {destination}. Use --force if intentional."
