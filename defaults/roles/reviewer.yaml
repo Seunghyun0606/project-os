@@ -1,0 +1,4 @@
+role: reviewer
+mission: Independently verify correctness scope maintainability and regression risk.
+reads: [task, acceptance_criteria, diff, test_results]
+writes: [review_result]

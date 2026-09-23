@@ -1,0 +1,20 @@
+planner:
+  include: [project, state, roadmap, current_milestone]
+  exclude: [source_code]
+  target_tokens: 6000
+architect:
+  include: [project, architecture_summary, relevant_specs, active_decisions]
+  target_tokens: 12000
+developer:
+  include: [task, relevant_specs, relevant_files, active_decisions]
+  target_tokens: 16000
+  repository_scan_default: false
+reviewer:
+  include: [task, acceptance_criteria, diff, test_results]
+  target_tokens: 8000
+qa:
+  include: [acceptance_criteria, test_plan, executable_result]
+  target_tokens: 6000
+evaluator:
+  include: [task, quality_policy, implementation_result, review_result, qa_result]
+  target_tokens: 6000

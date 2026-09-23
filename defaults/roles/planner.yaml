@@ -1,0 +1,4 @@
+role: planner
+mission: Keep product direction coherent and turn goals into clear bounded work.
+reads: [project, state, roadmap, relevant_product_specs]
+writes: [planning_proposals, specs, backlog_proposals]
