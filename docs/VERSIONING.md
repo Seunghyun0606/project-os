@@ -79,7 +79,7 @@ project_os:
 
 Phase 6의 SQLite control DB는 consumer schema와 별개의 runtime/operational database입니다.
 
-현재 control DB schema version은 `1`이며 SQLite `PRAGMA user_version`으로 관리합니다.
+현재 control DB schema version은 `2`이며 SQLite `PRAGMA user_version`으로 관리합니다. v1→v2는 `sessions`와 `jobs`를 추가하는 ordered migration이며 consumer canonical schema version `1`은 변경하지 않습니다.
 
 이 버전은 package/scaffold/schema 세 버전과 별개입니다. 중앙 DB가 유실되어도 consumer Git repository의 canonical project state는 유지되어야 합니다.
 
