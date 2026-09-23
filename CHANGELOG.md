@@ -14,6 +14,10 @@
 - Add Phase 5 harness-neutral ProjectService and versioned result envelope.
 - Route CLI business actions through the shared service and add separate automated test evidence.
 - Add a thin MCP-compatible business-tool adapter with no MCP transport dependency or unrestricted mutation tools.
+- Add Phase 6 SQLite central control service for multi-project registry and operational metadata.
+- Add central run/event/checkpoint/approval adapters, model policy and role-level cost accounting.
+- Add central evaluation history and non-mutating schema migration/compatibility assessment.
+- Add tests proving consumer repositories remain readable without the central database.
 
 ## 0.1.0 - 2026-09-23
 
