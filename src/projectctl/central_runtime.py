@@ -31,6 +31,32 @@ class SqliteEventStore:
             payload["project_id"] = self.project_id
         self.store.append_event(payload)
 
+        run_id = str(payload.get("run_id", ""))
+        existing = self.store.get_run(run_id) if run_id else None
+        if existing is None:
+            return
+
+        status_by_event = {
+            "workflow_started": "RUNNING",
+            "workflow_resumed": "RUNNING",
+            "approval_requested": "WAITING_APPROVAL",
+            "approval_approved": "RUNNING",
+            "approval_rejected": "REJECTED",
+            "step_started": "RUNNING",
+            "step_completed": "RUNNING",
+            "step_failed": "FAILED",
+            "workflow_completed": "COMPLETED",
+        }
+        status = status_by_event.get(str(payload.get("type", "")))
+        if status:
+            self.store.upsert_run(
+                project_id=str(existing["project_id"]),
+                run_id=run_id,
+                workflow=existing.get("workflow"),
+                status=status,
+                metadata=dict(existing.get("metadata", {}) or {}),
+            )
+
     def read_events(self, run_id: str) -> list[dict[str, Any]]:
         return self.store.read_events(run_id)
 
