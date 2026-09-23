@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -11,8 +10,11 @@ import yaml
 from . import __version__
 from .context import FileContextBuilder
 from .doctor import inspect
+from .handoffs import EvaluationService, HandoffStore, resolve_actor
 from .history import compact_run_history
 from .project import Project
+from .roles import RolePolicyResolver
+from .transitions import CanonicalStateWriter
 from .scaffold import install_scaffold
 from .scheduler import DeterministicTaskScheduler
 
@@ -93,49 +95,140 @@ def claim(
 ) -> None:
     """Move the next eligible task to active state."""
     project = Project.open()
-    selected = DeterministicTaskScheduler(project).next_task(role)
-    if selected is None or selected.get("id") != task_id:
-        raise typer.BadParameter(
-            f"{task_id} is not the next eligible task for role {role}"
-        )
-
-    backlog = project.backlog()
-    for task in backlog.get("tasks", []):
-        if task.get("id") == task_id:
-            task["status"] = "active"
-            break
-    project.store.save_yaml("state/backlog.yaml", backlog)
-
-    state = project.current_state()
-    current = list(state.get("current_tasks", []) or [])
-    if task_id not in current:
-        current.append(task_id)
-    state["current_tasks"] = current
-    project.store.save_yaml("state/current.yaml", state)
+    try:
+        CanonicalStateWriter(project).claim(task_id, role)
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
     typer.echo(f"Claimed {task_id}")
 
 
+def _load_handoff_file(path: Path) -> dict:
+    if not path.exists():
+        raise typer.BadParameter(f"Result file does not exist: {path}")
+    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(payload, dict):
+        raise typer.BadParameter(f"Result file must contain a mapping: {path}")
+    return payload
+
+
+def _task_role(project: Project, task_id: str) -> str:
+    for task in project.backlog().get("tasks", []) or []:
+        if task.get("id") == task_id:
+            return str(task.get("role", "developer"))
+    raise typer.BadParameter(f"Unknown task: {task_id}")
+
+
 @app.command()
-def submit(task_id: str, result_file: Path) -> None:
-    """Store a task result without self-approving completion."""
+def submit(
+    task_id: str,
+    result_file: Path,
+    role: Optional[str] = typer.Option(None, "--role"),
+    actor: Optional[str] = typer.Option(None, "--actor"),
+) -> None:
+    """Store implementation output without self-approving completion."""
     project = Project.open()
-    if not result_file.exists():
-        raise typer.BadParameter(f"Result file does not exist: {result_file}")
-
-    payload = yaml.safe_load(result_file.read_text(encoding="utf-8")) or {}
-    if payload.get("task") != task_id:
-        raise typer.BadParameter(
-            "Result file task id does not match the command task id"
+    payload = _load_handoff_file(result_file)
+    resolved_role = role or _task_role(project, task_id)
+    resolved_actor = resolve_actor(actor, resolved_role)
+    try:
+        destination = HandoffStore(project).submit(
+            task_id=task_id,
+            kind="implementation",
+            payload=payload,
+            role=resolved_role,
+            actor=resolved_actor,
         )
+    except (ValueError, PermissionError, FileExistsError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
-    destination = (
-        project.root / ".project-os" / "tasks" / "results" / f"{task_id}.yaml"
-    )
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(result_file, destination)
     typer.echo(
-        f"Stored result for {task_id}. Completion still requires quality evaluation."
+        f"Stored implementation result at {destination.relative_to(project.root)}. "
+        "Completion still requires independent quality evaluation."
     )
+
+
+@app.command("review")
+def submit_review(
+    task_id: str,
+    result_file: Path,
+    actor: Optional[str] = typer.Option(None, "--actor"),
+) -> None:
+    """Store an independent reviewer handoff."""
+    project = Project.open()
+    payload = _load_handoff_file(result_file)
+    try:
+        destination = HandoffStore(project).submit(
+            task_id=task_id,
+            kind="review",
+            payload=payload,
+            role="reviewer",
+            actor=resolve_actor(actor, "reviewer"),
+        )
+    except (ValueError, PermissionError, FileExistsError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"Stored review result at {destination.relative_to(project.root)}")
+
+
+@app.command("qa")
+def submit_qa(
+    task_id: str,
+    result_file: Path,
+    actor: Optional[str] = typer.Option(None, "--actor"),
+) -> None:
+    """Store an independent QA handoff."""
+    project = Project.open()
+    payload = _load_handoff_file(result_file)
+    try:
+        destination = HandoffStore(project).submit(
+            task_id=task_id,
+            kind="qa",
+            payload=payload,
+            role="qa",
+            actor=resolve_actor(actor, "qa"),
+        )
+    except (ValueError, PermissionError, FileExistsError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"Stored QA result at {destination.relative_to(project.root)}")
+
+
+@app.command("evaluate")
+def evaluate_task(
+    task_id: str,
+    result_file: Path,
+    actor: Optional[str] = typer.Option(None, "--actor"),
+) -> None:
+    """Evaluate evidence and apply the only completion-state transition path."""
+    project = Project.open()
+    payload = _load_handoff_file(result_file)
+    try:
+        destination = EvaluationService(project).evaluate(
+            task_id=task_id,
+            payload=payload,
+            actor=resolve_actor(actor, "evaluator"),
+        )
+    except (ValueError, PermissionError, FileExistsError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    decision = str(payload.get("decision", payload.get("status", ""))).upper()
+    typer.echo(
+        f"Stored evaluation at {destination.relative_to(project.root)}; "
+        f"canonical task decision: {decision}"
+    )
+
+
+@app.command("role-policy")
+def role_policy(
+    role: str,
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Show the resolved role policy after project overrides."""
+    try:
+        payload = RolePolicyResolver(Project.open()).resolve(role)
+    except KeyError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_output:
+        typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+    typer.echo(yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).rstrip())
 
 
 @app.command("compact-runs")
