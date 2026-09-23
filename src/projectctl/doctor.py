@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from . import __version__
 from .project import Project
+from .versioning import check_compatibility
 
 
 @dataclass
@@ -31,14 +33,31 @@ def inspect(project: Project) -> list[Finding]:
         if not (project.root / rel).exists():
             findings.append(Finding("ERROR", f"Missing required file: {rel}"))
 
+    project_os = project.manifest.get("project_os", {}) or {}
+    compatibility = check_compatibility(
+        __version__,
+        project_os.get("package_compatibility"),
+    )
+    if not compatibility.compatible:
+        findings.append(Finding("ERROR", compatibility.reason))
+
+    schema_version = str(project_os.get("schema_version", ""))
+    if not schema_version:
+        findings.append(Finding("ERROR", "Manifest is missing project_os.schema_version"))
+
     try:
         tasks = list(project.backlog().get("tasks", []) or [])
     except Exception as exc:
         findings.append(Finding("ERROR", f"Cannot read backlog: {exc}"))
         return findings
 
+    missing_id_count = sum(1 for task in tasks if not task.get("id"))
+    if missing_id_count:
+        findings.append(Finding("ERROR", f"{missing_id_count} backlog task(s) are missing an id"))
+
     ids = [str(task.get("id")) for task in tasks if task.get("id")]
-    for task_id in sorted({x for x in ids if ids.count(x) > 1}):
+    counts = {task_id: ids.count(task_id) for task_id in set(ids)}
+    for task_id in sorted(task_id for task_id, count in counts.items() if count > 1):
         findings.append(Finding("ERROR", f"Duplicate task id: {task_id}"))
 
     known = set(ids)
@@ -69,7 +88,7 @@ def inspect(project: Project) -> list[Finding]:
         visited.add(node)
         return False
 
-    for node in graph:
+    for node in sorted(graph):
         if visit(node):
             findings.append(Finding("ERROR", "Task dependency cycle detected"))
             break
