@@ -8,6 +8,8 @@ import typer
 import yaml
 
 from . import __version__
+from .central_store import CentralControlStore
+from .control_service import CentralControlService, default_control_db
 from .doctor import inspect
 from .history import compact_run_history
 from .project import Project
@@ -20,6 +22,22 @@ app = typer.Typer(
     no_args_is_help=True,
     help="Project OS deterministic project control CLI.",
 )
+control_app = typer.Typer(
+    no_args_is_help=True,
+    help="Central runtime/observability control for multiple Project OS repositories.",
+)
+app.add_typer(control_app, name="control")
+
+
+def _control(db: Path) -> CentralControlService:
+    return CentralControlService(CentralControlStore(db))
+
+
+def _echo_payload(payload, json_output: bool = False) -> None:
+    if json_output:
+        typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+    typer.echo(yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).rstrip())
 
 
 @app.command()
@@ -285,6 +303,199 @@ def compact_runs(
     )
     if result.summary_path:
         typer.echo(f"Summary: {result.summary_path}")
+
+
+@control_app.command("register")
+def control_register(
+    path: Path = typer.Argument(..., help="Project OS repository root."),
+    db: Path = typer.Option(default_control_db(), "--db", help="Central control SQLite DB."),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Register or refresh one repository without copying canonical project state."""
+    try:
+        payload = _control(db).register_project(path)
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@control_app.command("list")
+def control_list(
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """List registered Project OS repositories."""
+    _echo_payload({"projects": _control(db).list_projects()}, json_output)
+
+
+@control_app.command("sync")
+def control_sync(
+    project_id: str,
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Refresh one registry snapshot from its canonical Git working tree."""
+    try:
+        payload = _control(db).sync_project(project_id)
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@control_app.command("dashboard")
+def control_dashboard(
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Show registered projects and active central runs."""
+    _echo_payload(_control(db).dashboard(), json_output)
+
+
+@control_app.command("run-start")
+def control_run_start(
+    project_id: str,
+    run_id: str,
+    workflow: Optional[str] = typer.Option(None, "--workflow"),
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Register a central runtime run."""
+    try:
+        payload = _control(db).start_run(project_id, run_id, workflow=workflow)
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@control_app.command("run-update")
+def control_run_update(
+    run_id: str,
+    status: str,
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Update a central runtime run status."""
+    try:
+        payload = _control(db).update_run(run_id, status)
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@control_app.command("policy-set")
+def control_policy_set(
+    project_id: str,
+    role: str,
+    provider: str,
+    model: str,
+    max_cost: Optional[float] = typer.Option(None, "--max-cost"),
+    currency: str = typer.Option("USD", "--currency"),
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Set central model-routing/cost policy metadata for a project role."""
+    try:
+        payload = _control(db).set_model_policy(
+            project_id=project_id,
+            role=role,
+            provider=provider,
+            model=model,
+            max_cost=max_cost,
+            currency=currency,
+        )
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@control_app.command("usage-record")
+def control_usage_record(
+    project_id: str,
+    provider: str,
+    model: str,
+    input_tokens: int = typer.Option(0, "--input-tokens"),
+    output_tokens: int = typer.Option(0, "--output-tokens"),
+    cost: float = typer.Option(0.0, "--cost"),
+    currency: str = typer.Option("USD", "--currency"),
+    run_id: Optional[str] = typer.Option(None, "--run-id"),
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Record model usage/cost and return the current aggregate."""
+    try:
+        payload = _control(db).record_usage(
+            project_id=project_id,
+            provider=provider,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost=cost,
+            currency=currency,
+            run_id=run_id,
+        )
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@control_app.command("usage")
+def control_usage(
+    project_id: str,
+    run_id: Optional[str] = typer.Option(None, "--run-id"),
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Show aggregated model token/cost usage."""
+    _echo_payload(_control(db).store.usage_summary(project_id, run_id), json_output)
+
+
+@control_app.command("eval-record")
+def control_eval_record(
+    project_id: str,
+    task_id: str,
+    decision: str,
+    run_id: Optional[str] = typer.Option(None, "--run-id"),
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Append evaluation history metadata."""
+    try:
+        payload = _control(db).record_evaluation(
+            project_id=project_id,
+            task_id=task_id,
+            decision=decision,
+            run_id=run_id,
+        )
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload({"evaluations": payload}, json_output)
+
+
+@control_app.command("eval-history")
+def control_eval_history(
+    project_id: str,
+    task_id: Optional[str] = typer.Option(None, "--task-id"),
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Show central evaluation history without replacing task-result files."""
+    payload = _control(db).store.evaluation_history(project_id, task_id)
+    _echo_payload({"evaluations": payload}, json_output)
+
+
+@control_app.command("migration-assess")
+def control_migration_assess(
+    project_id: str,
+    target_schema_version: str,
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Assess schema migration need without mutating the consumer repository."""
+    try:
+        payload = _control(db).assess_migration(project_id, target_schema_version)
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
 
 
 @app.command()
