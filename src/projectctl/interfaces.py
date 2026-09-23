@@ -17,6 +17,10 @@ class ContextBuilder(Protocol):
     def build(self, task_id: str, role: str | None = None) -> dict[str, Any]: ...
 
 
+class CodeMapAdapter(Protocol):
+    def lookup(self, symbols: list[str]) -> list[dict[str, Any]]: ...
+
+
 class AgentRunner(Protocol):
     async def run(self, role: str, task: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]: ...
 
