@@ -17,11 +17,19 @@ class SqliteCheckpointStore:
 
 
 class SqliteEventStore:
-    def __init__(self, store: CentralControlStore):
+    def __init__(
+        self,
+        store: CentralControlStore,
+        project_id: str | None = None,
+    ):
         self.store = store
+        self.project_id = project_id
 
     def append_event(self, event: dict[str, Any]) -> None:
-        self.store.append_event(event)
+        payload = dict(event)
+        if self.project_id and not payload.get("project_id"):
+            payload["project_id"] = self.project_id
+        self.store.append_event(payload)
 
     def read_events(self, run_id: str) -> list[dict[str, Any]]:
         return self.store.read_events(run_id)
