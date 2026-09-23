@@ -35,6 +35,9 @@ class ContextResource(BaseModel):
 
 class ContextPackage(BaseModel):
     task: dict[str, Any]
+    project_file: str = "PROJECT.md"
+    specs: list[str] = Field(default_factory=list)
+    relevant_files: list[str] = Field(default_factory=list)
     role: str
     policy: dict[str, Any] = Field(default_factory=dict)
     resources: list[ContextResource] = Field(default_factory=list)
