@@ -36,7 +36,7 @@ Deliver:
 - code-map adapters — interface added
 - decision retrieval — implemented foundation
 - task-result summaries — implemented for dependency results
-- history compaction rules — pending
+- history compaction rules — implemented
 - token budgets — implemented foundation
 
 ## Phase 3 - Role-based multi-agent execution
