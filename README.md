@@ -223,10 +223,17 @@ projectctl version              # Project OS 버전
 projectctl status               # 현재 상태
 projectctl doctor               # 구조/참조 일관성 검사
 projectctl next --role developer # 다음 실행 가능한 Task
-projectctl context TASK-001     # Task용 context package
+projectctl context TASK-001     # 역할별 정책 + token budget가 적용된 Task context package
 projectctl claim TASK-001       # Task 선점
 projectctl submit TASK-001 FILE # 구조화된 작업 결과 제출
+projectctl compact-runs --keep-recent 20 # 오래된 run 기록 요약/보관
 ```
+
+context package는 역할별 기본 정책과 프로젝트 override를 합쳐 필요한 spec·파일·활성 Decision·선행 Task 결과 요약만 읽습니다. 전체 저장소를 기본으로 스캔하지 않으며 역할별 token budget을 넘으면 deterministic하게 잘라냅니다.
+
+`projectctl doctor`는 구조/Task dependency뿐 아니라 manifest의 package compatibility도 확인합니다.
+
+오래된 실행 기록은 `.project-os/runs/history/`에 계속 쌓아두지 않고 `projectctl compact-runs`로 정리할 수 있습니다. 최근 실행만 남기고, 오래된 실행은 작은 구조화 요약을 `runs/summaries/history.yaml`에 남긴 뒤 원본을 `runs/archive/`로 이동합니다. 원본을 삭제하지 않으므로 Git에서 검증 근거를 계속 추적할 수 있습니다. 자세한 형식은 `docs/RUN_HISTORY.md`를 참고하세요.
 
 초기 버전에서는 Project OS의 상태와 규칙 관리에 집중합니다. 실제 LLM 실행기, LangGraph, Agents SDK, MCP, Remote Worker는 Project OS core와 분리된 adapter로 확장할 수 있도록 설계합니다.
 

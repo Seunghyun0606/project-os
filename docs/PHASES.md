@@ -31,13 +31,13 @@ Deliver:
 Goal: minimize repeated context and session dependence.
 
 Deliver:
-- context policy inheritance
-- context index
-- code-map adapters
-- decision retrieval
-- task-result summaries
-- history compaction rules
-- token budgets
+- context policy inheritance — implemented foundation
+- context index — implemented foundation
+- code-map adapters — interface added
+- decision retrieval — implemented foundation
+- task-result summaries — implemented for dependency results
+- history compaction rules — implemented
+- token budgets — implemented foundation
 
 ## Phase 3 - Role-based multi-agent execution
 
