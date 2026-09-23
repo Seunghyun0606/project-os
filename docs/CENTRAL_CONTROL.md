@@ -41,7 +41,8 @@ Phase 6 stores:
 - model routing/cost policy metadata,
 - token and cost usage records,
 - evaluation history,
-- compatibility and migration assessment status.
+- compatibility and migration assessment status,
+- persistent Project Session metadata and per-request Job linkage.
 
 It does **not** copy backlog/spec/decision contents into SQLite.
 
@@ -100,7 +101,7 @@ Supported run states are:
 
 ## Centralized runtime adapters
 
-Phase 6 provides:
+Phase 6+ provides:
 
 - `SqliteCheckpointStore`
 - `SqliteEventStore`
@@ -210,7 +211,7 @@ Actual breaking schema upgrades still require an ordered migration implementatio
 
 ## Central database schema
 
-The control database has its own schema version, separate from consumer Project OS schema versions.
+The control database has its own schema version, separate from consumer Project OS schema versions. Current control DB schema version is `2`; opening a v1 DB performs an ordered v1→v2 migration that adds `sessions` and `jobs` without changing consumer repositories.
 
 It is stored with SQLite `PRAGMA user_version`.
 
@@ -235,13 +236,6 @@ This separation is a deliberate Project OS invariant.
 
 ## Out of scope
 
-Phase 6 still does not own:
+Phase 6+ still does not own Telegram/Slack network gateways, Desktop/Lightsail routing, host wake/sleep, remote shell transport, machine lifecycle or messenger authorization. Those belong to the separate Remote Control system.
 
-- Telegram or Slack gateways,
-- Desktop/Lightsail routing,
-- host wake/sleep,
-- remote shell execution,
-- machine lifecycle,
-- messenger command authorization.
-
-Those belong to the separate Remote Control system.
+Project Session identity/persistence/locking is intentionally owned here so Telegram and Desktop can share one runtime context without either channel becoming the session owner. See `docs/SESSIONS.md`.

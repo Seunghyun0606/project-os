@@ -9,6 +9,7 @@ import yaml
 
 from . import __version__
 from .central_store import CentralControlStore
+from .codex_cli import run_attach
 from .control_service import CentralControlService, default_control_db
 from .doctor import inspect
 from .history import compact_run_history
@@ -17,6 +18,7 @@ from .roles import RolePolicyResolver
 from .runtime_stores import FileApprovalGateway, FileCheckpointStore
 from .scaffold import install_scaffold
 from .service import ProjectService
+from .sessions import SessionLockedError, SessionStateError
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -26,7 +28,12 @@ control_app = typer.Typer(
     no_args_is_help=True,
     help="Central runtime/observability control for multiple Project OS repositories.",
 )
+session_app = typer.Typer(
+    no_args_is_help=True,
+    help="Persistent Project Session and Codex context controls.",
+)
 app.add_typer(control_app, name="control")
+app.add_typer(session_app, name="session")
 
 
 def _control(db: Path) -> CentralControlService:
@@ -509,6 +516,205 @@ def control_migration_assess(
     except (KeyError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     _echo_payload(payload, json_output)
+
+
+@app.command("sessions")
+def sessions_list(
+    project_id: Optional[str] = typer.Option(None, "--project", help="Filter by project id."),
+    limit: int = typer.Option(50, "--limit", min=1),
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """List persistent Project Sessions across registered projects."""
+    try:
+        items = _control(db).list_sessions(project_id, limit=limit)
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_output:
+        _echo_payload({"sessions": items}, True)
+        return
+    typer.echo("PROJECT\tSESSION\tCODEX SESSION\tSTATUS\tLAST ACTIVITY")
+    for item in items:
+        typer.echo(
+            f"{item['project_id']}\t{item['session_id']}\t"
+            f"{item.get('codex_session_id') or '-'}\t{item['status']}\t"
+            f"{item['last_activity_at']}"
+        )
+
+
+@session_app.command("show")
+def session_show(
+    session_id: str,
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Show one persistent Project Session."""
+    try:
+        payload = _control(db).session(session_id)
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@session_app.command("active")
+def session_active(
+    project_id: str,
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Show the active session for a project, if any."""
+    try:
+        payload = _control(db).active_session(project_id)
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload({"session": payload}, json_output)
+
+
+@session_app.command("new")
+def session_new(
+    project_id: str,
+    created_by: str = typer.Option("manual", "--created-by"),
+    worker_id: Optional[str] = typer.Option(None, "--worker-id"),
+    title: Optional[str] = typer.Option(None, "--title"),
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Close the idle active session and create a fresh lazy Codex session."""
+    try:
+        payload = _control(db).new_session(
+            project_id,
+            created_by=created_by,
+            worker_id=worker_id,
+            title=title,
+        )
+    except (KeyError, ValueError, SessionLockedError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@session_app.command("begin-job")
+def session_begin_job(
+    project_id: str,
+    job_id: str,
+    source: str = typer.Option("telegram", "--source"),
+    worker_id: Optional[str] = typer.Option(None, "--worker-id"),
+    prompt_preview: Optional[str] = typer.Option(None, "--prompt-preview"),
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(True, "--json/--yaml"),
+) -> None:
+    """Resolve and lock the active Project Session for one remote job."""
+    try:
+        payload = _control(db).begin_session_job(
+            project_id,
+            job_id,
+            source=source,
+            worker_id=worker_id,
+            prompt_preview=prompt_preview,
+        )
+    except (KeyError, ValueError, SessionLockedError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@session_app.command("bind-thread")
+def session_bind_thread(
+    job_id: str,
+    thread_id: str,
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(True, "--json/--yaml"),
+) -> None:
+    """Persist thread.started.thread_id and detect stale resume ids."""
+    try:
+        payload = _control(db).bind_session_thread(job_id, thread_id)
+    except (KeyError, ValueError, SessionStateError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@session_app.command("recover-job")
+def session_recover_job(
+    job_id: str,
+    created_by: Optional[str] = typer.Option(None, "--created-by"),
+    worker_id: Optional[str] = typer.Option(None, "--worker-id"),
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(True, "--json/--yaml"),
+) -> None:
+    """Move a stale-resume job to a new lazy Project Session."""
+    try:
+        payload = _control(db).recover_session_job(
+            job_id,
+            created_by=created_by,
+            worker_id=worker_id,
+        )
+    except (KeyError, ValueError, SessionStateError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@session_app.command("finish-job")
+def session_finish_job(
+    job_id: str,
+    failed: bool = typer.Option(False, "--failed"),
+    error_code: Optional[str] = typer.Option(None, "--error-code"),
+    session_fatal: bool = typer.Option(False, "--session-fatal"),
+    db: Path = typer.Option(default_control_db(), "--db"),
+    json_output: bool = typer.Option(True, "--json/--yaml"),
+) -> None:
+    """Release the session lock and record the job result."""
+    try:
+        payload = _control(db).finish_session_job(
+            job_id,
+            success=not failed,
+            error_code=error_code,
+            session_fatal=session_fatal,
+        )
+    except (KeyError, ValueError, SessionStateError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_payload(payload, json_output)
+
+
+@session_app.command("attach")
+def session_attach(
+    session_id: str,
+    worker_id: str = typer.Option("desktop", "--worker-id"),
+    codex_bin: Optional[str] = typer.Option(None, "--codex-bin"),
+    db: Path = typer.Option(default_control_db(), "--db"),
+) -> None:
+    """Lock a Project Session and open its Codex exec thread interactively."""
+    service = _control(db)
+    try:
+        ticket = service.begin_session_attach(session_id, worker_id=worker_id)
+    except (KeyError, ValueError, SessionLockedError, SessionStateError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    job_id = str(ticket["job"]["job_id"])
+    session = ticket["session"]
+    codex_session_id = str(session["codex_session_id"])
+    project = service.project(str(session["project_id"]))
+    try:
+        return_code = run_attach(
+            codex_session_id,
+            codex_bin=codex_bin,
+            cwd=Path(str(project["root_path"])),
+        )
+    except (FileNotFoundError, OSError) as exc:
+        service.finish_session_job(
+            job_id,
+            success=False,
+            error_code="CODEX_START_FAILED",
+        )
+        raise typer.BadParameter(str(exc)) from exc
+
+    if return_code == 0:
+        service.finish_session_job(job_id)
+        return
+
+    service.finish_session_job(
+        job_id,
+        success=False,
+        error_code="CODEX_RESUME_FAILED",
+    )
+    raise typer.Exit(code=return_code)
 
 
 @app.command()

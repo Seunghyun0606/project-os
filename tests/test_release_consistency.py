@@ -16,7 +16,7 @@ def test_release_version_sources_stay_aligned():
     match = re.search(r'^version = "([^"]+)"$', pyproject, flags=re.MULTILINE)
 
     assert match is not None
-    assert version_file == "0.2.0"
+    assert version_file == "0.3.0"
     assert match.group(1) == version_file
     assert __version__ == version_file
 
