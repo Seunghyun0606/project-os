@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import yaml
 
 from projectctl.central_store import CentralControlStore
@@ -70,6 +71,7 @@ def test_control_service_tracks_runs_model_policy_usage_and_eval_history(tmp_pat
         run_id="run-1",
         provider="openai",
         model="gpt-test",
+        role="developer",
         input_tokens=100,
         output_tokens=20,
         cost=0.25,
@@ -79,6 +81,7 @@ def test_control_service_tracks_runs_model_policy_usage_and_eval_history(tmp_pat
         run_id="run-1",
         provider="openai",
         model="gpt-test",
+        role="developer",
         input_tokens=50,
         output_tokens=10,
         cost=0.10,
@@ -96,7 +99,13 @@ def test_control_service_tracks_runs_model_policy_usage_and_eval_history(tmp_pat
     assert policy["config"] == {"reasoning": "medium"}
     assert summary["input_tokens"] == 150
     assert summary["output_tokens"] == 30
-    assert summary["cost_by_currency"]["USD"] == 0.35
+    budget = service.model_budget_status("demo", "developer")
+
+    assert summary["cost_by_currency"]["USD"] == pytest.approx(0.35)
+    assert budget["configured"] is True
+    assert budget["spent"] == pytest.approx(0.35)
+    assert budget["remaining"] == pytest.approx(4.65)
+    assert budget["exceeded"] is False
     assert history[-1]["decision"] == "PASS"
     assert history[-1]["metrics"] == {"critical_issues": 0}
 
