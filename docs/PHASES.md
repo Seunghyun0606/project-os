@@ -70,10 +70,12 @@ Deliver:
 Goal: let Codex, Claude Code, Cursor and other harnesses use the same project contract.
 
 Deliver:
-- optional MCP adapter
-- CLI remains supported
-- role-based tool surface
-- harness-neutral result format
+- harness-neutral ProjectService — implemented
+- optional MCP adapter — implemented without transport dependency
+- CLI remains supported — routed through ProjectService for core business actions
+- role-based business-intent tool surface — implemented
+- harness-neutral result format — implemented and versioned
+- separate automated test evidence — implemented
 
 ## Phase 6 - Central project control service
 
