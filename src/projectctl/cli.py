@@ -11,6 +11,7 @@ import yaml
 from . import __version__
 from .context import FileContextBuilder
 from .doctor import inspect
+from .history import compact_run_history
 from .project import Project
 from .scaffold import install_scaffold
 from .scheduler import DeterministicTaskScheduler
@@ -135,6 +136,29 @@ def submit(task_id: str, result_file: Path) -> None:
     typer.echo(
         f"Stored result for {task_id}. Completion still requires quality evaluation."
     )
+
+
+@app.command("compact-runs")
+def compact_runs(
+    keep_recent: int = typer.Option(20, "--keep-recent", help="Number of newest raw runs to keep."),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Compact old structured run history without deleting raw evidence."""
+    try:
+        result = compact_run_history(Project.open(), keep_recent=keep_recent)
+    except (ValueError, FileExistsError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    payload = result.as_dict()
+    if json_output:
+        typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+    typer.echo(
+        f"Compacted {len(result.compacted_runs)} run(s); "
+        f"kept {len(result.kept_runs)} recent run(s)."
+    )
+    if result.summary_path:
+        typer.echo(f"Summary: {result.summary_path}")
 
 
 @app.command()
