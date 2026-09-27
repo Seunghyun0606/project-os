@@ -242,6 +242,44 @@ projectctl next --role developer 기준 다음 Task를 진행해.
 
 새 세션에서도 저장소 루트의 `AGENTS.md`를 시작점으로 사용합니다. 에이전트는 전체 대화 이력 대신 `PROJECT.md → .project-os/manifest.yaml → 현재 상태 → 현재 Task` 순서로 필요한 정보만 읽어 현재 상태를 복구합니다.
 
+### 이미 개발 중인 프로젝트에 도입할 때
+
+이미 코드와 문서, TODO, Git history가 쌓여 있는 프로젝트라면 신규 프로젝트 Bootstrap과 다르게 접근합니다.
+
+핵심 원칙:
+
+~~~text
+과거  → 중요한 Milestone / Decision만 요약
+현재  → 코드·문서·TODO·테스트 상태를 비교해 정확히 복원
+미래  → Project OS Task / evidence / quality gate로 상세 관리
+~~~
+
+권장 흐름:
+
+~~~text
+기존 저장소
+    ↓
+별도 adoption branch
+    ↓
+projectctl init
+    ↓
+Repository Inventory
+    ↓
+PROJECT.md / roadmap / current 복원
+    ↓
+앞으로 할 일만 backlog / Task로 생성
+    ↓
+projectctl doctor
+    ↓
+Project OS 관리 시작
+~~~
+
+이미 완료된 작업을 과거 Task로 전부 역생성하지 않는 것이 중요합니다. 완료된 과거는 Milestone summary 수준으로 남기고, 현재 진행 중이거나 앞으로 실행할 작업부터 canonical Task contract를 만드는 방식을 권장합니다.
+
+기존 README, docs/, 설계서, TODO는 강제로 이동하지 않고 그대로 보존하며 필요한 Task에서 reference로 연결합니다. 기존 PROJECT.md나 AGENTS.md가 있어 projectctl init과 충돌하면 --force로 덮어쓰기보다 내용을 비교해 병합하세요.
+
+상세 절차와 중간 도입용 Codex Prompt는 [Brownfield Adoption Guide](docs/BROWNFIELD_ADOPTION.md)를 참고하세요.
+
 ---
 
 ## 상세 가이드
