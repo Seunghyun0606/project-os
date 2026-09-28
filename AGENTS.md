@@ -4,8 +4,9 @@ This repository develops Project OS itself.
 
 ## Scope boundaries
 
-- `scaffold/default/` is the base consumer scaffold. `scaffold/qa/` is an optional consumer QA overlay installed only when explicitly requested.
-- `src/`, `defaults/`, `schemas/`, `docs/`, `tests/`, root version files and CI are Project OS development files.
+- scaffold/default/ is the base consumer scaffold.
+- scaffold/qa/ is an optional consumer QA overlay installed only when explicitly requested.
+- src/, defaults/, schemas/, docs/, tests/, root version files and CI are Project OS development files.
 - Remote execution, messenger gateways, host routing and Lightsail/Desktop control are out of scope here.
 
 ## Development rules
@@ -17,4 +18,5 @@ This repository develops Project OS itself.
 5. Do not let worker agents approve their own work.
 6. Keep canonical project memory in Git-managed project files.
 7. Add migrations for breaking schema changes; never overwrite consumer project state during upgrades.
-8. Run tests and `projectctl doctor` against a generated scaffold before marking work complete.\n9. Keep QA contracts project-agnostic; do not add project-specific Playwright, Godot, Android, Electron/Tauri or Remote Control implementations to this repository.
+8. Run tests and projectctl doctor against a generated scaffold before marking work complete.
+9. Keep QA contracts project-agnostic; do not add project-specific Playwright, Godot, Android, Electron/Tauri or Remote Control implementations to this repository.
