@@ -8,10 +8,11 @@ Project OS는 AI 에이전트가 프로젝트의 방향과 현재 상태를 잃�
 
 ## 개요
 
-Project OS는 두 부분으로 나뉩니다.
+Project OS는 다음 요소로 나뉩니다.
 
-- **scaffold/**: 다른 프로젝트에 넣어서 바로 사용하는 최소 파일 세트
-- **projectctl**: scaffold를 만들고, 상태를 확인하고, 다음 작업을 선택하고, 파일 간 일관성을 검사하는 도구
+- **scaffold/default/**: 모든 consumer 프로젝트에 사용하는 기본 파일 세트
+- **scaffold/qa/**: 자동 QA를 사용할 프로젝트만 선택적으로 설치하는 overlay
+- **projectctl**: scaffold 설치, 상태 확인, 다음 작업 선택, 파일 간 일관성 검사를 담당하는 도구
 
 Project OS 자체를 개발하기 위한 코드, 테스트, 스키마, 버전 문서는 다른 프로젝트로 복사되지 않습니다.
 
@@ -47,7 +48,7 @@ python -m pip install -e .
 
 ```bash
 projectctl version
-# 0.2.0
+# 0.3.0
 ```
 
 ### 2. 기존 프로젝트에 scaffold 추가
@@ -84,6 +85,22 @@ specs/
 ```
 
 작업 중 필요한 빈 디렉터리도 함께 준비됩니다.
+
+자동 QA Contract까지 처음부터 사용할 프로젝트는 다음처럼 설치합니다.
+
+~~~powershell
+projectctl init --with-qa
+~~~
+
+이미 Project OS를 사용하는 프로젝트에 QA 파일만 추가하려면:
+
+~~~powershell
+projectctl qa-init
+~~~
+
+QA는 opt-in입니다. 일반 projectctl init은 scripts/qa.ps1을 만들지 않으므로 기존 프로젝트의 동작을 바꾸지 않습니다.
+
+자세한 QA 규격은 [Codex 자동 QA Contract](docs/QA_CONTRACT.md)를 참고하세요.
 
 ### 3. 최초 기획문서 넣기
 
@@ -372,6 +389,28 @@ Project OS의 상태 파일과 상세 기획서를 분리하면 현재 상태를
 
 예를 들어 프로젝트에 따라 build, lint, unit test, integration test, 독립 review 등을 필수로 지정할 수 있습니다.
 
+### 자동 QA Contract (선택)
+
+여러 프로젝트가 서로 다른 테스트 기술을 사용하더라도 Codex와 Remote Control이 동일한 방식으로 결과를 읽을 수 있도록 optional QA Contract를 제공합니다.
+
+외부 인터페이스는 다음 네 가지가 핵심입니다.
+
+~~~text
+scripts/qa.ps1
+    ↓
+.qa/runs/<run-id>/result.json
+    ↓
+PASS / FAIL / UI_REVIEW_REQUIRED
+    ↓
+artifacts[] (run directory 기준 상대경로)
+~~~
+
+Project OS는 Playwright, Godot, Android ADB/Appium, pytest, Electron/Tauri 테스트 자체를 구현하지 않습니다. 각 프로젝트가 필요한 도구를 선택하고 contract만 맞춥니다.
+
+UI_REVIEW_REQUIRED는 자동 QA의 결과이며, 이후 UI_APPROVED/UI_REJECTED 같은 Human Gate 상태는 Remote Control의 책임입니다.
+
+새 프로젝트는 projectctl init --with-qa, 기존 프로젝트는 projectctl qa-init으로 opt-in할 수 있습니다. 자세한 규격과 Web/Godot/Android 예시는 [docs/QA_CONTRACT.md](docs/QA_CONTRACT.md)를 참고하세요.
+
 ### Human Gate
 
 사람의 판단이 꼭 필요한 경우만 중단하도록 합니다.
@@ -401,7 +440,9 @@ Git + PROJECT.md + .project-os = 프로젝트의 장기 기억
 ### projectctl 주요 명령
 
 ```bash
-projectctl init                 # scaffold 설치
+projectctl init                 # base scaffold 설치
+projectctl init --with-qa       # fresh project + optional QA scaffold
+projectctl qa-init              # existing Project OS project에 QA overlay만 설치
 projectctl version              # Project OS 버전
 projectctl status               # 현재 상태
 projectctl doctor               # 구조/참조 일관성 검사
@@ -440,7 +481,7 @@ Project OS core는 특정 LLM 실행기나 orchestration framework에 종속되�
 
 ## Scaffold와 Project OS 개발 파일 구분
 
-**다른 프로젝트가 가져가는 것은 `scaffold/default/`의 내용뿐입니다.**
+**기본적으로 다른 프로젝트가 가져가는 것은 `scaffold/default/`입니다. 자동 QA를 명시적으로 선택한 경우에만 `scaffold/qa/` overlay가 추가됩니다.**
 
 다음은 Project OS 자체를 개발하기 위한 파일이며 대상 프로젝트에 복사하지 않습니다.
 
@@ -453,7 +494,7 @@ Project OS core는 특정 LLM 실행기나 orchestration framework에 종속되�
 - `VERSION`
 - `pyproject.toml`
 
-`projectctl init`이 이 구분을 자동으로 지킵니다.
+`projectctl init`은 base scaffold만 설치하고, `projectctl init --with-qa` 또는 `projectctl qa-init`을 사용한 경우에만 QA overlay를 설치합니다. Project OS 내부의 `src/`, `schemas/`, `docs/`, `tests/`는 consumer 프로젝트로 복사하지 않습니다.
 
 ## 버전 관리
 
@@ -461,11 +502,11 @@ Project OS는 package, scaffold, schema version을 구분합니다.
 
 | 구분 | 현재 | 의미 |
 | --- | --- | --- |
-| package | `0.2.0` | `projectctl` 도구 버전 |
-| scaffold | `0.2.0` | 새 프로젝트에 생성되는 scaffold 버전 |
+| package | `0.3.0` | `projectctl` 도구 버전 |
+| scaffold | `0.3.0` | 새 프로젝트에 생성되는 base scaffold 버전 |
 | schema | `1` | canonical `.project-os` 데이터 형식 |
 
-새 0.2.0 scaffold는 `projectctl >=0.2,<1.0`을 요구합니다. 기존 0.1.x consumer repository는 0.2.0 package로 계속 읽을 수 있으며, 기존 프로젝트에 최신 scaffold를 통째로 덮어쓰지 않습니다.
+새 0.3.0 scaffold는 `projectctl >=0.3,<1.0`을 요구합니다. 기존 0.1.x/0.2.x consumer repository는 0.3.0 package로 계속 읽을 수 있으며, 기존 프로젝트에 최신 scaffold를 통째로 덮어쓰지 않습니다. QA result contract는 consumer schema와 별도로 `1.0`을 사용합니다.
 
 Phase 6의 중앙 SQLite DB schema는 consumer schema와 별도로 관리되며 현재 version은 `1`입니다.
 
