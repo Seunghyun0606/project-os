@@ -31,9 +31,15 @@ Remote execution, messenger integration, Desktop/Lightsail host routing, wake/sl
 
 ## Repository boundary
 
-Consumer files live only under:
+Base consumer files live under:
 
 `scaffold/default/`
+
+Optional consumer QA overlay files live under:
+
+`scaffold/qa/`
+
+The QA overlay is copied only when explicitly requested.
 
 Project OS development/versioning files live outside that directory:
 
@@ -47,7 +53,7 @@ Project OS development/versioning files live outside that directory:
 - pyproject.toml
 - CI files
 
-`projectctl init` must copy only the consumer scaffold into another repository.
+`projectctl init` must copy only the base consumer scaffold into another repository. Optional consumer overlays such as QA must require an explicit opt-in and must never pull Project OS development files into the consumer repository.
 
 Do not require consumers to copy this entire repository.
 

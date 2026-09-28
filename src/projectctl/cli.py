@@ -15,7 +15,7 @@ from .history import compact_run_history
 from .project import Project
 from .roles import RolePolicyResolver
 from .runtime_stores import FileApprovalGateway, FileCheckpointStore
-from .scaffold import install_scaffold
+from .scaffold import install_qa_scaffold, install_scaffold
 from .service import ProjectService
 
 app = typer.Typer(
@@ -52,8 +52,13 @@ def init_project(
     name: Optional[str] = typer.Option(None, "--name", help="Human-readable project name."),
     path: Path = typer.Option(Path("."), "--path", help="Target project root."),
     force: bool = typer.Option(False, "--force", help="Overwrite existing scaffold files."),
+    with_qa: bool = typer.Option(
+        False,
+        "--with-qa",
+        help="Also install the optional project-agnostic QA scaffold.",
+    ),
 ) -> None:
-    """Install only the consumer scaffold into a project."""
+    """Install the consumer scaffold, optionally with the QA overlay."""
     target = path.resolve()
     resolved_id = project_id or target.name.lower().replace(" ", "-")
     resolved_name = name or target.name
@@ -62,8 +67,38 @@ def init_project(
         project_id=resolved_id,
         project_name=resolved_name,
         force=force,
+        with_qa=with_qa,
     )
     typer.echo(f"Project OS scaffold installed at {target}")
+    if with_qa:
+        typer.echo("Optional QA scaffold installed: scripts/qa.ps1")
+
+
+@app.command("qa-init")
+def qa_init(
+    path: Path = typer.Option(Path("."), "--path", help="Target Project OS project root."),
+    force: bool = typer.Option(False, "--force", help="Overwrite existing QA scaffold files."),
+) -> None:
+    """Install only the optional QA scaffold into an existing Project OS project."""
+    target = path.resolve()
+    manifest_path = target / ".project-os" / "manifest.yaml"
+    if not manifest_path.exists():
+        raise typer.BadParameter(
+            "Project OS manifest not found. Run projectctl init first."
+        )
+
+    project = Project(target)
+    project_meta = project.manifest.get("project", {})
+    project_id = str(project_meta.get("id", target.name))
+    project_name = str(project_meta.get("name", target.name))
+
+    install_qa_scaffold(
+        target,
+        project_id=project_id,
+        project_name=project_name,
+        force=force,
+    )
+    typer.echo(f"Project OS QA scaffold installed at {target}")
 
 
 def _service_data(result) -> dict:
