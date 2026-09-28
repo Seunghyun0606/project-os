@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "run_id": "QA-example-001",
+  "project": "example-project",
+  "status": "UI_REVIEW_REQUIRED",
+  "started_at": "2026-09-28T01:00:00Z",
+  "finished_at": "2026-09-28T01:02:00Z",
+  "preflight": "PASS",
+  "build": "PASS",
+  "launch": "PASS",
+  "smoke": "PASS",
+  "functional": "PASS",
+  "ui": "REVIEW_REQUIRED",
+  "artifact_collection": "PASS",
+  "cleanup": "PASS",
+  "next_action": "REQUEST_UI_REVIEW",
+  "recommendation": "Review the captured main flow screenshots.",
+  "errors": [],
+  "artifacts": [
+    {
+      "type": "screenshot",
+      "name": "main-screen",
+      "path": "screenshots/01-main.png",
+      "scenario": "main-flow"
+    },
+    {
+      "type": "log",
+      "name": "stdout",
+      "path": "stdout.log"
+    }
+  ]
+}
