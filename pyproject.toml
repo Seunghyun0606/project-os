@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "project-os"
-version = "0.2.0"
+version = "0.3.0"
 description = "Project-scoped memory, task contracts and deterministic controls for long-running AI agent work."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<9"]
+dev = ["pytest>=8,<9", "jsonschema>=4.23,<5"]
 
 [project.scripts]
 projectctl = "projectctl.cli:app"
@@ -24,7 +24,7 @@ projectctl = "projectctl.cli:app"
 packages = ["src/projectctl"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"scaffold/default" = "projectctl/_scaffold/default"
+"scaffold/default" = "projectctl/_scaffold/default"\n"scaffold/qa" = "projectctl/_scaffold/qa"
 "defaults" = "projectctl/_defaults"
 "schemas" = "projectctl/_schemas"
 
