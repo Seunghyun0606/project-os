@@ -16,7 +16,7 @@ def test_release_version_sources_stay_aligned():
     match = re.search(r'^version = "([^"]+)"$', pyproject, flags=re.MULTILINE)
 
     assert match is not None
-    assert version_file == "0.2.0"
+    assert version_file == "0.3.0"
     assert match.group(1) == version_file
     assert __version__ == version_file
 
@@ -27,9 +27,14 @@ def test_current_package_supports_current_scaffold():
     )
     project_os = manifest["project_os"]
 
-    assert project_os["scaffold_version"] == "0.2.0"
+    assert project_os["scaffold_version"] == "0.3.0"
     assert project_os["schema_version"] == "1"
+    assert project_os["package_compatibility"] == ">=0.3,<1.0"
     assert check_compatibility(
         __version__,
         project_os["package_compatibility"],
     ).compatible is True
+
+
+def test_030_package_remains_compatible_with_020_consumer_range():
+    assert check_compatibility("0.3.0", ">=0.2,<1.0").compatible is True
