@@ -39,8 +39,10 @@ jobs:
         shell: pwsh
         run: |
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scaffold\qa\scripts\qa.ps1 -RunId QA-CI
-          if ($LASTEXITCODE -ne 1) {
-            throw "Unconfigured QA scaffold must exit 1, got $LASTEXITCODE"
+          $qaExitCode = $LASTEXITCODE
+          $global:LASTEXITCODE = 0
+          if ($qaExitCode -ne 1) {
+            throw "Unconfigured QA scaffold must exit 1, got $qaExitCode"
           }
 
           $resultPath = ".\scaffold\qa\.qa\runs\QA-CI\result.json"
