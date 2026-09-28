@@ -6,6 +6,18 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Write-Utf8NoBom {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Content
+    )
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
+}
+
 $projectRoot = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($RunId)) {
     $RunId = "QA-{0}-{1}" -f ([DateTime]::UtcNow.ToString("yyyyMMdd-HHmmssfff")), $PID
@@ -26,15 +38,16 @@ $projectName = "__PROJECT_ID__"
 $stdoutPath = Join-Path $runDir "stdout.log"
 $stderrPath = Join-Path $runDir "stderr.log"
 
-@(
+$stdout = @(
     "Project OS QA scaffold is installed."
     "This template is intentionally not a project-specific QA implementation."
     "Replace this result with real preflight/build/launch/test/artifact/cleanup logic."
-) | Set-Content -Path $stdoutPath -Encoding UTF8
+) -join [Environment]::NewLine
 
-@(
-    "QA_NOT_CONFIGURED: scripts/qa.ps1 must be implemented for this project before QA can pass."
-) | Set-Content -Path $stderrPath -Encoding UTF8
+$stderr = "QA_NOT_CONFIGURED: scripts/qa.ps1 must be implemented for this project before QA can pass."
+
+Write-Utf8NoBom -Path $stdoutPath -Content $stdout
+Write-Utf8NoBom -Path $stderrPath -Content $stderr
 
 $result = [ordered]@{
     schema_version = "1.0"
@@ -69,6 +82,7 @@ $result = [ordered]@{
 }
 
 $resultPath = Join-Path $runDir "result.json"
-$result | ConvertTo-Json -Depth 10 | Set-Content -Path $resultPath -Encoding UTF8
+$resultJson = $result | ConvertTo-Json -Depth 10
+Write-Utf8NoBom -Path $resultPath -Content $resultJson
 Write-Host "QA result: $resultPath"
 exit 1
