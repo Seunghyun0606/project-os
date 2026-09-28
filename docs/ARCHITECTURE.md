@@ -118,3 +118,30 @@ Central operational data includes runs, events, usage/cost and evaluation histor
 The control database has an independent schema version through SQLite `PRAGMA user_version`. Consumer schema compatibility and migration need are observed centrally, but consumer files are not automatically upgraded or overwritten.
 
 The default control DB lives outside consumer repositories at `~/.project-os/control.db`.
+
+
+## Project-agnostic QA boundary
+
+QA is an optional contract layer between a consumer project and external orchestration.
+
+    Project OS
+        |
+        +-- QA contract + optional scaffold
+                |
+          consumer project QA implementation
+                |
+          Remote Control / other caller
+
+Project OS owns only the stable interface:
+
+- scripts/qa.ps1 as the Windows-first entry point
+- caller-supplied QA run id
+- .qa/runs/<run-id>/result.json
+- schema-defined run/stage status
+- run-directory-relative artifact metadata
+
+Project OS does not own project-specific test frameworks or process orchestration.
+
+The QA output directory is runtime evidence, not canonical project planning state. By default .qa/runs is ignored by Git. A project may promote selected reports or summaries into its normal Project OS evidence flow when durability is required.
+
+Human review state remains outside the QA runner contract. UI_REVIEW_REQUIRED may be emitted by QA, but UI_APPROVED and UI_REJECTED belong to Remote Control or another Human Gate owner.
