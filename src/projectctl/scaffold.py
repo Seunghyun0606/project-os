@@ -24,17 +24,31 @@ EMPTY_DIRECTORIES = [
     "specs/ux",
 ]
 
+QA_EMPTY_DIRECTORIES = [
+    ".qa/runs",
+]
 
-def scaffold_root():
-    packaged = files("projectctl").joinpath("_scaffold", "default")
+
+def _scaffold_root(name: str):
+    packaged = files("projectctl").joinpath("_scaffold", name)
     if packaged.is_dir():
         return packaged
 
-    development = Path(__file__).resolve().parents[2] / "scaffold" / "default"
+    development = Path(__file__).resolve().parents[2] / "scaffold" / name
     if development.is_dir():
         return development
 
-    raise RuntimeError("Project OS scaffold resources were not packaged correctly.")
+    raise RuntimeError(
+        f"Project OS scaffold resources were not packaged correctly: {name}"
+    )
+
+
+def scaffold_root():
+    return _scaffold_root("default")
+
+
+def qa_scaffold_root():
+    return _scaffold_root("qa")
 
 
 def iter_files(root) -> Iterator[Tuple[object, Path]]:
@@ -49,16 +63,14 @@ def iter_files(root) -> Iterator[Tuple[object, Path]]:
     yield from walk(root, Path())
 
 
-def install_scaffold(
+def _install_entries(
     target: Path,
+    entries: list[tuple[object, Path]],
+    *,
     project_id: str,
     project_name: str,
-    force: bool = False,
+    force: bool,
 ) -> None:
-    target = target.resolve()
-    template = scaffold_root()
-    entries = list(iter_files(template))
-
     if not force:
         conflicts = [
             target / relative
@@ -70,7 +82,8 @@ def install_scaffold(
             if len(conflicts) > 5:
                 preview += f", ... (+{len(conflicts) - 5} more)"
             raise FileExistsError(
-                f"Refusing to modify an existing project because scaffold files already exist: {preview}"
+                "Refusing to modify an existing project because scaffold files "
+                f"already exist: {preview}"
             )
 
     for entry, relative in entries:
@@ -81,5 +94,50 @@ def install_scaffold(
         content = content.replace("__PROJECT_NAME__", project_name)
         destination.write_text(content, encoding="utf-8")
 
-    for relative in EMPTY_DIRECTORIES:
+
+def install_scaffold(
+    target: Path,
+    project_id: str,
+    project_name: str,
+    force: bool = False,
+    with_qa: bool = False,
+) -> None:
+    target = target.resolve()
+    entries = list(iter_files(scaffold_root()))
+    directories = list(EMPTY_DIRECTORIES)
+
+    if with_qa:
+        entries.extend(iter_files(qa_scaffold_root()))
+        directories.extend(QA_EMPTY_DIRECTORIES)
+
+    _install_entries(
+        target,
+        entries,
+        project_id=project_id,
+        project_name=project_name,
+        force=force,
+    )
+
+    for relative in directories:
+        (target / relative).mkdir(parents=True, exist_ok=True)
+
+
+def install_qa_scaffold(
+    target: Path,
+    project_id: str,
+    project_name: str,
+    force: bool = False,
+) -> None:
+    target = target.resolve()
+    entries = list(iter_files(qa_scaffold_root()))
+
+    _install_entries(
+        target,
+        entries,
+        project_id=project_id,
+        project_name=project_name,
+        force=force,
+    )
+
+    for relative in QA_EMPTY_DIRECTORIES:
         (target / relative).mkdir(parents=True, exist_ok=True)
