@@ -22,7 +22,7 @@ New-Item -ItemType Directory -Force -Path (Join-Path $runDir "videos") | Out-Nul
 New-Item -ItemType Directory -Force -Path (Join-Path $runDir "artifacts") | Out-Null
 
 $startedAt = [DateTime]::UtcNow.ToString("o")
-$projectName = Split-Path -Leaf $projectRoot
+$projectName = "__PROJECT_ID__"
 $stdoutPath = Join-Path $runDir "stdout.log"
 $stderrPath = Join-Path $runDir "stderr.log"
 
