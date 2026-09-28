@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-09-28
+
+- Add project-agnostic QA Result Contract 1.0 with PASS/FAIL/UI_REVIEW_REQUIRED run states and stage-level PASS/FAIL/SKIPPED/REVIEW_REQUIRED semantics.
+- Add schema-validated run-relative artifact metadata for screenshots, videos, logs, reports, traces and other evidence.
+- Add optional consumer QA overlay with Windows-first scripts/qa.ps1, QA guide, result example and lightweight scenario convention.
+- Add projectctl init --with-qa for fresh projects and projectctl qa-init for existing Project OS projects without reinstalling the base scaffold.
+- Add Codex completion rules that require configured QA to run before completion and preserve the boundary between automated checks and human UI approval.
+- Add Windows PowerShell 5.1 scaffold smoke coverage and JSON Schema regression tests.
+- Keep Remote Control orchestration, Telegram, Human Gate actions and project-specific test implementations out of Project OS.
+
+
 ## 0.2.0 - 2026-09-23
 
 - Add role-aware bounded context retrieval with project overrides, context-index lookup, active decisions and dependency result summaries.
