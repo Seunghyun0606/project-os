@@ -1,0 +1,15 @@
+id: main-flow
+description: Main user flow smoke test
+
+steps:
+  - action: launch
+  - action: wait_ready
+  - action: capture
+    name: main-screen
+  - action: perform_primary_action
+  - action: capture
+    name: result-screen
+
+expect:
+  crash: false
+  unexpected_errors: 0
