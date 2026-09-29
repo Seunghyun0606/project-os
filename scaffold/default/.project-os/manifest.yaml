@@ -1,7 +1,7 @@
 project_os:
-  scaffold_version: "0.3.0"
+  scaffold_version: "0.4.0"
   schema_version: "1"
-  package_compatibility: ">=0.3,<1.0"
+  package_compatibility: ">=0.4,<1.0"
 
 project:
   id: "__PROJECT_ID__"

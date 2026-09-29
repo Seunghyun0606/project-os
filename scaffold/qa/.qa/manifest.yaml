@@ -1,0 +1,28 @@
+schemaVersion: "2.0"
+
+qa:
+  command:
+    windows: "powershell -NoProfile -ExecutionPolicy Bypass -File .qa/scripts/run-qa.ps1 -RunId {runId}"
+    unix: "./.qa/scripts/run-qa.sh --run-id {runId}"
+  stages:
+    - build
+    - unit
+    - integration
+    - smoke
+    - ui
+    - visual
+  timeoutSeconds: 900
+  environment:
+    required: []
+    optional: []
+    notes: "Add project-specific runtime requirements here."
+
+scenarios:
+  directory: ".qa/scenarios"
+
+artifacts:
+  result: ".qa/runs/{runId}/result.json"
+  screenshots: ".qa/runs/{runId}/screenshots"
+  logs: ".qa/runs/{runId}/logs"
+  visual: ".qa/runs/{runId}/visual"
+  metadata: ".qa/runs/{runId}/metadata"

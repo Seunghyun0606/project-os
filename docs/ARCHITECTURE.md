@@ -124,24 +124,26 @@ The default control DB lives outside consumer repositories at `~/.project-os/con
 
 QA is an optional contract layer between a consumer project and external orchestration.
 
-    Project OS
-        |
-        +-- QA contract + optional scaffold
-                |
-          consumer project QA implementation
-                |
-          Remote Control / other caller
+```text
+Project OS
+    |
+    +-- QA Contract v2 + optional scaffold
+            |
+      consumer project QA implementation
+            |
+      Remote Control / other caller
+```
 
 Project OS owns only the stable interface:
 
-- scripts/qa.ps1 as the Windows-first entry point
+- `.qa/manifest.yaml` discovery and OS-specific command contract
 - caller-supplied QA run id
-- .qa/runs/<run-id>/result.json
-- schema-defined run/stage status
-- run-directory-relative artifact metadata
+- manifest-declared repository-relative result/artifact paths
+- schema-defined run/stage/scenario status
+- screenshot metadata and structured visual review issues
 
-Project OS does not own project-specific test frameworks or process orchestration.
+Project OS does not own project-specific test frameworks, Telegram, host control or process orchestration.
 
-The QA output directory is runtime evidence, not canonical project planning state. By default .qa/runs is ignored by Git. A project may promote selected reports or summaries into its normal Project OS evidence flow when durability is required.
+The QA output directory is runtime evidence, not canonical project planning state. By default `.qa/runs` is ignored by Git.
 
-Human review state remains outside the QA runner contract. UI_REVIEW_REQUIRED may be emitted by QA, but UI_APPROVED and UI_REJECTED belong to Remote Control or another Human Gate owner.
+The QA runner may emit `HUMAN_GATE_REQUIRED`, but approval/rejection and UI delivery belong to external orchestration.

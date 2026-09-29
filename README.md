@@ -48,7 +48,7 @@ python -m pip install -e .
 
 ```bash
 projectctl version
-# 0.3.0
+# 0.4.0
 ```
 
 ### 2. 기존 프로젝트에 scaffold 추가
@@ -98,7 +98,7 @@ projectctl init --with-qa
 projectctl qa-init
 ~~~
 
-QA는 opt-in입니다. 일반 projectctl init은 scripts/qa.ps1을 만들지 않으므로 기존 프로젝트의 동작을 바꾸지 않습니다.
+QA는 opt-in입니다. 일반 `projectctl init`은 `.qa/manifest.yaml`을 만들지 않으므로 기존 프로젝트의 동작을 바꾸지 않습니다.
 
 자세한 QA 규격은 [Codex 자동 QA Contract](docs/QA_CONTRACT.md)를 참고하세요.
 
@@ -391,25 +391,25 @@ Project OS의 상태 파일과 상세 기획서를 분리하면 현재 상태를
 
 ### 자동 QA Contract (선택)
 
-여러 프로젝트가 서로 다른 테스트 기술을 사용하더라도 Codex와 Remote Control이 동일한 방식으로 결과를 읽을 수 있도록 optional QA Contract를 제공합니다.
+여러 프로젝트가 서로 다른 테스트 기술을 사용하더라도 Codex와 Remote Control이 같은 인터페이스로 QA를 실행하고 읽을 수 있도록 QA Contract v2를 제공합니다.
 
-외부 인터페이스는 다음 네 가지가 핵심입니다.
+핵심 인터페이스:
 
 ~~~text
-scripts/qa.ps1
+.qa/manifest.yaml
+    ↓ host OS command 선택
+.qa/scripts/run-qa.ps1 | run-qa.sh
     ↓
 .qa/runs/<run-id>/result.json
     ↓
-PASS / FAIL / UI_REVIEW_REQUIRED
+PASS | PASS_WITH_WARNINGS | FAIL | HUMAN_GATE_REQUIRED
     ↓
-artifacts[] (run directory 기준 상대경로)
+artifacts[] + visualReviews[]
 ~~~
 
-Project OS는 Playwright, Godot, Android ADB/Appium, pytest, Electron/Tauri 테스트 자체를 구현하지 않습니다. 각 프로젝트가 필요한 도구를 선택하고 contract만 맞춥니다.
+Project OS는 Playwright, Godot, Android ADB, pytest 같은 실제 테스트 도구를 강제하지 않습니다. 각 프로젝트가 runner를 구현하고 Contract만 맞춥니다.
 
-UI_REVIEW_REQUIRED는 자동 QA의 결과이며, 이후 UI_APPROVED/UI_REJECTED 같은 Human Gate 상태는 Remote Control의 책임입니다.
-
-새 프로젝트는 projectctl init --with-qa, 기존 프로젝트는 projectctl qa-init으로 opt-in할 수 있습니다. 자세한 규격과 Web/Godot/Android 예시는 [docs/QA_CONTRACT.md](docs/QA_CONTRACT.md)를 참고하세요.
+새 프로젝트는 `projectctl init --with-qa`, 기존 프로젝트는 `projectctl qa-init`으로 opt-in합니다. Manifest/Scenario/Result schema와 Remote Control 연동 절차는 [docs/QA_CONTRACT.md](docs/QA_CONTRACT.md)를 참고하세요.
 
 ### Human Gate
 
@@ -502,11 +502,11 @@ Project OS는 package, scaffold, schema version을 구분합니다.
 
 | 구분 | 현재 | 의미 |
 | --- | --- | --- |
-| package | `0.3.0` | `projectctl` 도구 버전 |
-| scaffold | `0.3.0` | 새 프로젝트에 생성되는 base scaffold 버전 |
+| package | `0.4.0` | `projectctl` 도구 버전 |
+| scaffold | `0.4.0` | 새 프로젝트에 생성되는 base scaffold 버전 |
 | schema | `1` | canonical `.project-os` 데이터 형식 |
 
-새 0.3.0 scaffold는 `projectctl >=0.3,<1.0`을 요구합니다. 기존 0.1.x/0.2.x consumer repository는 0.3.0 package로 계속 읽을 수 있으며, 기존 프로젝트에 최신 scaffold를 통째로 덮어쓰지 않습니다. QA result contract는 consumer schema와 별도로 `1.0`을 사용합니다.
+새 0.4.0 scaffold는 `projectctl >=0.4,<1.0`을 요구합니다. 기존 0.1.x~0.3.x consumer repository는 0.4.0 package로 계속 읽을 수 있으며, 기존 프로젝트에 최신 scaffold를 통째로 덮어쓰지 않습니다. QA Contract는 consumer schema와 별도로 `2.0`을 사용하고, legacy QA result 1.0 schema도 호환 판별용으로 보존합니다.
 
 Phase 6의 중앙 SQLite DB schema는 consumer schema와 별도로 관리되며 현재 version은 `1`입니다.
 

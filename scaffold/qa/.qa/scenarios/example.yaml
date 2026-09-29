@@ -1,0 +1,32 @@
+schemaVersion: "2.0"
+id: companion_focus_session
+name: Companion Focus Session
+type: ui
+required: true
+timeoutSeconds: 120
+tags: [smoke, ui]
+humanGate: false
+
+steps:
+  - action: launch_app
+  - waitFor: main_window_ready
+  - screenshot: 01-main
+    caption: Main window after launch
+  - action: start_focus
+  - screenshot: 02-focus-running
+    caption: Focus session running
+
+assertions:
+  - app_running
+  - mina_visible
+  - timer_running
+
+screenshots:
+  - name: 01-main
+    caption: Main window after launch
+    kind: initial
+    priority: normal
+  - name: 02-focus-running
+    caption: Focus session running
+    kind: result
+    priority: important

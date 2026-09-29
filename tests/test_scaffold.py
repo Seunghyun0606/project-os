@@ -18,8 +18,7 @@ def test_install_scaffold_copies_only_base_consumer_files(tmp_path: Path):
     assert (tmp_path / ".project-os/runs/runtime/events").is_dir()
     assert (tmp_path / ".project-os/runs/runtime/approvals").is_dir()
 
-    assert not (tmp_path / "scripts/qa.ps1").exists()
-    assert not (tmp_path / "qa").exists()
+    assert not (tmp_path / ".qa/manifest.yaml").exists()
     assert not (tmp_path / ".qa/runs").exists()
 
     assert not (tmp_path / "src").exists()
@@ -32,43 +31,42 @@ def test_install_scaffold_copies_only_base_consumer_files(tmp_path: Path):
     )
     assert manifest["project"]["id"] == "demo"
     assert manifest["project"]["name"] == "Demo"
-    assert manifest["project_os"]["scaffold_version"] == "0.3.0"
+    assert manifest["project_os"]["scaffold_version"] == "0.4.0"
     assert manifest["project_os"]["schema_version"] == "1"
-    assert manifest["project_os"]["package_compatibility"] == ">=0.3,<1.0"
+    assert manifest["project_os"]["package_compatibility"] == ">=0.4,<1.0"
 
 
 def test_install_scaffold_with_qa_adds_optional_overlay(tmp_path: Path):
-    install_scaffold(
-        tmp_path,
-        project_id="demo",
-        project_name="Demo",
-        with_qa=True,
-    )
+    install_scaffold(tmp_path, project_id="demo", project_name="Demo", with_qa=True)
 
-    assert (tmp_path / "scripts/qa.ps1").exists()
-    assert (tmp_path / "qa/README.md").exists()
-    assert (tmp_path / "qa/result.example.json").exists()
-    assert (tmp_path / "qa/scenarios/smoke.example.yaml").exists()
+    assert (tmp_path / ".qa/manifest.yaml").exists()
+    assert (tmp_path / ".qa/README.md").exists()
+    assert (tmp_path / ".qa/result.example.json").exists()
+    assert (tmp_path / ".qa/scenarios/example.yaml").exists()
+    assert (tmp_path / ".qa/scripts/run-qa.ps1").exists()
+    assert (tmp_path / ".qa/scripts/run-qa.sh").exists()
     assert (tmp_path / ".qa/.gitignore").exists()
     assert (tmp_path / ".qa/runs").is_dir()
+    assert not (tmp_path / "scripts/qa.ps1").exists()
+    assert not (tmp_path / "qa").exists()
 
-    script = (tmp_path / "scripts/qa.ps1").read_text(encoding="utf-8")
-    assert '__PROJECT_ID__' not in script
-    assert '$projectName = "demo"' in script
+    manifest = (tmp_path / ".qa/manifest.yaml").read_text(encoding="utf-8")
+    ps1 = (tmp_path / ".qa/scripts/run-qa.ps1").read_text(encoding="utf-8")
+    sh = (tmp_path / ".qa/scripts/run-qa.sh").read_text(encoding="utf-8")
+    assert "__PROJECT_ID__" not in ps1
+    assert "__PROJECT_NAME__" not in ps1
+    assert "__PROJECT_ID__" not in sh
+    assert 'schemaVersion: "2.0"' in manifest
 
 
 def test_install_qa_scaffold_does_not_reinstall_base_scaffold(tmp_path: Path):
     install_scaffold(tmp_path, project_id="demo", project_name="Demo")
     project_before = (tmp_path / "PROJECT.md").read_text(encoding="utf-8")
 
-    install_qa_scaffold(
-        tmp_path,
-        project_id="demo",
-        project_name="Demo",
-    )
+    install_qa_scaffold(tmp_path, project_id="demo", project_name="Demo")
 
     assert (tmp_path / "PROJECT.md").read_text(encoding="utf-8") == project_before
-    assert (tmp_path / "scripts/qa.ps1").exists()
+    assert (tmp_path / ".qa/manifest.yaml").exists()
     assert (tmp_path / ".qa/runs").is_dir()
 
 
@@ -83,15 +81,11 @@ def test_install_scaffold_protects_existing_project_file(tmp_path: Path):
 
 
 def test_install_qa_scaffold_protects_existing_qa_file(tmp_path: Path):
-    (tmp_path / "scripts").mkdir()
-    existing = "# Existing QA implementation\n"
-    (tmp_path / "scripts/qa.ps1").write_text(existing, encoding="utf-8")
+    (tmp_path / ".qa").mkdir()
+    existing = "schemaVersion: existing\n"
+    (tmp_path / ".qa/manifest.yaml").write_text(existing, encoding="utf-8")
 
     with pytest.raises(FileExistsError):
-        install_qa_scaffold(
-            tmp_path,
-            project_id="demo",
-            project_name="Demo",
-        )
+        install_qa_scaffold(tmp_path, project_id="demo", project_name="Demo")
 
-    assert (tmp_path / "scripts/qa.ps1").read_text(encoding="utf-8") == existing
+    assert (tmp_path / ".qa/manifest.yaml").read_text(encoding="utf-8") == existing

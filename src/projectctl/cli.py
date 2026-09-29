@@ -71,7 +71,7 @@ def init_project(
     )
     typer.echo(f"Project OS scaffold installed at {target}")
     if with_qa:
-        typer.echo("Optional QA scaffold installed: scripts/qa.ps1")
+        typer.echo("Optional QA scaffold installed: .qa/manifest.yaml")
 
 
 @app.command("qa-init")

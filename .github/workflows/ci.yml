@@ -21,15 +21,29 @@ jobs:
           cd "$tmpdir"
           projectctl init --project-id smoke --name "Smoke Project"
           projectctl doctor
-          test ! -f scripts/qa.ps1
+          test ! -f .qa/manifest.yaml
       - name: Optional QA scaffold smoke test
         run: |
           tmpdir="$(mktemp -d)"
           cd "$tmpdir"
           projectctl init --project-id qa-smoke --name "QA Smoke Project" --with-qa
           projectctl doctor
-          test -f scripts/qa.ps1
-          test -f qa/result.example.json
+          test -f .qa/manifest.yaml
+          test -f .qa/scripts/run-qa.ps1
+          test -f .qa/scripts/run-qa.sh
+          set +e
+          sh .qa/scripts/run-qa.sh --run-id QA-CI-UNIX
+          qa_exit=$?
+          set -e
+          test "$qa_exit" -eq 1
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path(".qa/runs/QA-CI-UNIX/result.json").read_text(encoding="utf-8"))
+          assert result["schemaVersion"] == "2.0"
+          assert result["status"] == "FAIL"
+          assert result["errors"][0]["code"] == "QA_NOT_CONFIGURED"
+          PY
 
   qa-scaffold-windows:
     runs-on: windows-latest
@@ -38,7 +52,7 @@ jobs:
       - name: Windows PowerShell 5.1 QA scaffold smoke test
         shell: pwsh
         run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scaffold\qa\scripts\qa.ps1 -RunId QA-CI
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scaffold\qa\.qa\scripts\run-qa.ps1 -RunId QA-CI
           $qaExitCode = $LASTEXITCODE
           $global:LASTEXITCODE = 0
           if ($qaExitCode -ne 1) {
@@ -56,8 +70,8 @@ jobs:
           }
 
           $result = Get-Content $resultPath -Raw | ConvertFrom-Json
-          if ($result.schema_version -ne "1.0") {
-            throw "Unexpected QA schema version: $($result.schema_version)"
+          if ($result.schemaVersion -ne "2.0") {
+            throw "Unexpected QA schema version: $($result.schemaVersion)"
           }
           if ($result.status -ne "FAIL") {
             throw "Unconfigured QA scaffold must report FAIL"

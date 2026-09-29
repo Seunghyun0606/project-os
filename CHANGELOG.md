@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-09-29
+
+- Promote automated QA to Contract v2 with a discoverable `.qa/manifest.yaml`, OS-specific runner commands, timeout and environment requirements.
+- Add JSON Schema contracts for QA Manifest, semantic Scenario and Result.
+- Expand run status to PASS, PASS_WITH_WARNINGS, FAIL and HUMAN_GATE_REQUIRED with stage/scenario status detail.
+- Treat screenshots, visual diffs, logs and metadata as repository-relative first-class artifacts; add screenshot kind/priority/caption metadata.
+- Add structured visual review issues for clipping, overlap, alignment, readability, missing assets, unexpected layout, visual regression, hierarchy and obstruction.
+- Move the optional consumer QA scaffold under `.qa/` with Windows and Unix runner templates.
+- Preserve the QA Result v1 schema for legacy detection while making Contract v2 the current interface.
+- Update consumer Agent completion rules, Linux/Windows smoke tests, release consistency and Remote Control integration docs.
+- Keep Telegram, Remote Control orchestration, host management and provider orchestration out of Project OS.
+
+
 ## 0.3.0 - 2026-09-28
 
 - Add project-agnostic QA Result Contract 1.0 with PASS/FAIL/UI_REVIEW_REQUIRED run states and stage-level PASS/FAIL/SKIPPED/REVIEW_REQUIRED semantics.

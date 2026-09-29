@@ -29,15 +29,17 @@ If no task is assigned, use `projectctl next --role <role>` to identify an eligi
 
 ## Optional QA completion contract
 
-If `scripts/qa.ps1` exists, it is the project QA entry point.
+If `.qa/manifest.yaml` exists, the project declares support for the Project OS QA Contract.
 
-Before reporting implementation complete:
+For code changes covered by QA:
 
-1. Run the QA entry point after implementation.
+1. Read `.qa/manifest.yaml` and run the command for the current host OS after implementation.
 2. A QA `FAIL` is not completion. Analyze the failure, fix what is in scope, and rerun within a reasonable retry limit.
-3. If automatic checks pass but visual judgment is still needed, preserve `UI_REVIEW_REQUIRED` and report the generated artifacts for human review.
-4. Always report the QA run id, run status, result.json path and relevant artifact paths.
-5. If QA cannot run because of an environment/tooling problem, do not treat it as `PASS`.
-6. Do not convert `UI_REVIEW_REQUIRED` into `UI_APPROVED` or `UI_REJECTED`; those belong to the external Human Gate / Remote Control layer.
+3. `PASS_WITH_WARNINGS` may be completed only when warnings are reported explicitly with their artifacts.
+4. Preserve `HUMAN_GATE_REQUIRED` and report the relevant artifacts. Do not self-approve the human gate.
+5. Always report the QA run id, status, result path, and important/failure artifacts.
+6. If QA cannot run because the environment is unavailable, do not treat it as `PASS`.
+
+QA may be skipped only when the change is documentation-only, modifies the QA environment itself, no executable QA environment exists, or the task explicitly excludes QA. State the reason when skipping.
 
 The QA runner contract is project-agnostic. Project-specific tools and commands stay inside the project's QA implementation.

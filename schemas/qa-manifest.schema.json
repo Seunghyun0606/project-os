@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-os.local/schemas/qa-manifest.schema.json",
+  "title": "Project OS QA Manifest",
+  "description": "Technology-neutral discovery contract for a consumer project's QA runner.",
+  "type": "object",
+  "required": ["schemaVersion", "qa", "artifacts"],
+  "properties": {
+    "schemaVersion": {"const": "2.0"},
+    "qa": {
+      "type": "object",
+      "required": ["command", "stages"],
+      "properties": {
+        "command": {
+          "type": "object",
+          "minProperties": 1,
+          "properties": {
+            "windows": {"type": "string", "minLength": 1},
+            "unix": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": false
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"}
+        },
+        "timeoutSeconds": {"type": "integer", "minimum": 1},
+        "environment": {
+          "type": "object",
+          "properties": {
+            "required": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+            "optional": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+            "notes": {"type": "string"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "scenarios": {
+      "type": "object",
+      "properties": {"directory": {"$ref": "#/$defs/relativePath"}},
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["result", "screenshots", "logs", "visual"],
+      "properties": {
+        "result": {"$ref": "#/$defs/relativePath"},
+        "screenshots": {"$ref": "#/$defs/relativePath"},
+        "logs": {"$ref": "#/$defs/relativePath"},
+        "visual": {"$ref": "#/$defs/relativePath"},
+        "metadata": {"$ref": "#/$defs/relativePath"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+    }
+  },
+  "additionalProperties": false
+}

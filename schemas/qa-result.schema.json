@@ -1,33 +1,41 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://project-os.local/schemas/qa-result.schema.json",
-  "title": "Project OS QA Run Result",
-  "description": "Project-agnostic QA result contract consumed by agents and Remote Control.",
+  "title": "Project OS QA Result",
+  "description": "Technology-neutral QA result consumed by Remote Control and other callers.",
   "type": "object",
-  "required": [
-    "schema_version", "run_id", "project", "status", "started_at", "finished_at",
-    "preflight", "build", "launch", "smoke", "functional", "ui",
-    "artifact_collection", "cleanup", "errors", "artifacts"
-  ],
+  "required": ["schemaVersion", "runId", "project", "status", "startedAt", "finishedAt", "summary", "stages", "scenarios", "artifacts", "visualReviews", "errors", "nextAction"],
   "properties": {
-    "schema_version": {"const": "1.0"},
-    "run_id": {"type": "string", "pattern": "^QA-[A-Za-z0-9][A-Za-z0-9._-]*$"},
-    "project": {"type": "string", "minLength": 1},
-    "status": {"enum": ["PASS", "FAIL", "UI_REVIEW_REQUIRED"]},
-    "started_at": {"type": "string", "format": "date-time"},
-    "finished_at": {"type": "string", "format": "date-time"},
-    "preflight": {"$ref": "#/$defs/automatedStageStatus"},
-    "build": {"$ref": "#/$defs/automatedStageStatus"},
-    "launch": {"$ref": "#/$defs/automatedStageStatus"},
-    "smoke": {"$ref": "#/$defs/automatedStageStatus"},
-    "functional": {"$ref": "#/$defs/automatedStageStatus"},
-    "ui": {"$ref": "#/$defs/uiStageStatus"},
-    "artifact_collection": {"$ref": "#/$defs/automatedStageStatus"},
-    "cleanup": {"$ref": "#/$defs/automatedStageStatus"},
-    "next_action": {"enum": ["NONE", "FIX_AND_RETRY", "REQUEST_UI_REVIEW", "INVESTIGATE_ENVIRONMENT"]},
-    "recommendation": {"type": "string"},
-    "errors": {"type": "array", "items": {"$ref": "#/$defs/error"}},
+    "schemaVersion": {"const": "2.0"},
+    "runId": {"type": "string", "pattern": "^QA-[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "project": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {"id": {"type": "string", "minLength": 1}, "name": {"type": "string", "minLength": 1}},
+      "additionalProperties": false
+    },
+    "status": {"enum": ["PASS", "PASS_WITH_WARNINGS", "FAIL", "HUMAN_GATE_REQUIRED"]},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "finishedAt": {"type": "string", "format": "date-time"},
+    "summary": {
+      "type": "object",
+      "required": ["total", "passed", "failed", "warnings", "skipped", "humanGates"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0},
+        "passed": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "warnings": {"type": "integer", "minimum": 0},
+        "skipped": {"type": "integer", "minimum": 0},
+        "humanGates": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "stages": {"type": "array", "items": {"$ref": "#/$defs/stage"}},
+    "scenarios": {"type": "array", "items": {"$ref": "#/$defs/scenarioResult"}},
     "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}},
+    "visualReviews": {"type": "array", "items": {"$ref": "#/$defs/visualReview"}},
+    "errors": {"type": "array", "items": {"$ref": "#/$defs/error"}},
+    "nextAction": {"enum": ["NONE", "REVIEW_WARNINGS", "FIX_AND_RETRY", "HUMAN_GATE", "INVESTIGATE_ENVIRONMENT"]},
     "metadata": {"type": "object", "additionalProperties": true}
   },
   "allOf": [
@@ -35,52 +43,70 @@
       "if": {"properties": {"status": {"const": "PASS"}}, "required": ["status"]},
       "then": {
         "properties": {
-          "preflight": {"enum": ["PASS", "SKIPPED"]},
-          "build": {"enum": ["PASS", "SKIPPED"]},
-          "launch": {"enum": ["PASS", "SKIPPED"]},
-          "smoke": {"enum": ["PASS", "SKIPPED"]},
-          "functional": {"enum": ["PASS", "SKIPPED"]},
-          "ui": {"enum": ["PASS", "SKIPPED"]},
-          "artifact_collection": {"enum": ["PASS", "SKIPPED"]},
-          "cleanup": {"enum": ["PASS", "SKIPPED"]},
-          "next_action": {"enum": ["NONE"]}
+          "summary": {"properties": {"failed": {"const": 0}, "warnings": {"const": 0}, "humanGates": {"const": 0}}},
+          "stages": {"items": {"properties": {"status": {"enum": ["PASS", "SKIPPED"]}}}},
+          "scenarios": {"items": {"properties": {"status": {"enum": ["PASS", "SKIPPED"]}}}},
+          "errors": {"maxItems": 0},
+          "nextAction": {"const": "NONE"}
         }
       }
     },
     {
-      "if": {"properties": {"status": {"const": "UI_REVIEW_REQUIRED"}}, "required": ["status"]},
+      "if": {"properties": {"status": {"const": "PASS_WITH_WARNINGS"}}, "required": ["status"]},
       "then": {
         "properties": {
-          "preflight": {"enum": ["PASS", "SKIPPED"]},
-          "build": {"enum": ["PASS", "SKIPPED"]},
-          "launch": {"enum": ["PASS", "SKIPPED"]},
-          "smoke": {"enum": ["PASS", "SKIPPED"]},
-          "functional": {"enum": ["PASS", "SKIPPED"]},
-          "ui": {"const": "REVIEW_REQUIRED"},
-          "artifact_collection": {"enum": ["PASS", "SKIPPED"]},
-          "cleanup": {"enum": ["PASS", "SKIPPED"]},
-          "next_action": {"const": "REQUEST_UI_REVIEW"}
-        },
-        "required": ["next_action"]
+          "summary": {"properties": {"failed": {"const": 0}, "warnings": {"minimum": 1}, "humanGates": {"const": 0}}},
+          "stages": {"items": {"properties": {"status": {"enum": ["PASS", "WARN", "SKIPPED"]}}}},
+          "scenarios": {"items": {"properties": {"status": {"enum": ["PASS", "WARN", "SKIPPED"]}}}},
+          "nextAction": {"const": "REVIEW_WARNINGS"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "HUMAN_GATE_REQUIRED"}}, "required": ["status"]},
+      "then": {
+        "properties": {
+          "summary": {"properties": {"failed": {"const": 0}, "humanGates": {"minimum": 1}}},
+          "nextAction": {"const": "HUMAN_GATE"}
+        }
       }
     },
     {
       "if": {"properties": {"status": {"const": "FAIL"}}, "required": ["status"]},
-      "then": {"properties": {"errors": {"minItems": 1}}}
+      "then": {
+        "anyOf": [
+          {"properties": {"summary": {"properties": {"failed": {"minimum": 1}}}}},
+          {"properties": {"errors": {"minItems": 1}}}
+        ],
+        "properties": {"nextAction": {"enum": ["FIX_AND_RETRY", "INVESTIGATE_ENVIRONMENT"]}}
+      }
     }
   ],
   "$defs": {
-    "automatedStageStatus": {"enum": ["PASS", "FAIL", "SKIPPED"]},
-    "uiStageStatus": {"enum": ["PASS", "FAIL", "SKIPPED", "REVIEW_REQUIRED"]},
-    "error": {
+    "relativePath": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"},
+    "stageStatus": {"enum": ["PENDING", "RUNNING", "PASS", "WARN", "FAIL", "SKIPPED"]},
+    "stage": {
       "type": "object",
-      "required": ["code", "message", "stage"],
+      "required": ["id", "status"],
       "properties": {
-        "code": {"type": "string", "minLength": 1},
-        "message": {"type": "string", "minLength": 1},
-        "stage": {"enum": ["preflight", "build", "launch", "smoke", "functional", "ui", "artifact_collection", "cleanup"]},
-        "kind": {"enum": ["test", "environment", "tooling", "configuration", "unknown"]},
-        "retryable": {"type": "boolean"}
+        "id": {"type": "string", "minLength": 1},
+        "status": {"$ref": "#/$defs/stageStatus"},
+        "startedAt": {"type": "string", "format": "date-time"},
+        "finishedAt": {"type": "string", "format": "date-time"},
+        "message": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "scenarioResult": {
+      "type": "object",
+      "required": ["id", "status"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string"},
+        "type": {"type": "string"},
+        "status": {"enum": ["PENDING", "RUNNING", "PASS", "WARN", "FAIL", "SKIPPED", "HUMAN_GATE_REQUIRED"]},
+        "required": {"type": "boolean"},
+        "message": {"type": "string"}
       },
       "additionalProperties": false
     },
@@ -88,18 +114,68 @@
       "type": "object",
       "required": ["type", "name", "path"],
       "properties": {
-        "type": {"enum": ["screenshot", "video", "log", "report", "trace", "other"]},
+        "type": {"enum": ["screenshot", "visual_diff", "log", "report", "trace", "video", "metadata", "other"]},
         "name": {"type": "string", "minLength": 1},
-        "path": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
-        },
-        "scenario": {"type": "string", "minLength": 1},
-        "description": {"type": "string"},
-        "media_type": {"type": "string"},
-        "size_bytes": {"type": "integer", "minimum": 0},
+        "path": {"$ref": "#/$defs/relativePath"},
+        "stage": {"type": "string", "minLength": 1},
+        "scenarioId": {"type": "string", "minLength": 1},
+        "step": {"type": "string", "minLength": 1},
+        "caption": {"type": "string"},
+        "severity": {"enum": ["info", "warning", "error", "critical"]},
+        "createdAt": {"type": "string", "format": "date-time"},
+        "kind": {"enum": ["initial", "checkpoint", "result", "failure", "visual_diff"]},
+        "priority": {"enum": ["normal", "important", "failure"]},
+        "mediaType": {"type": "string"},
+        "sizeBytes": {"type": "integer", "minimum": 0},
         "sha256": {"type": "string", "pattern": "^[A-Fa-f0-9]{64}$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "screenshot"}}, "required": ["type"]},
+          "then": {"required": ["caption", "kind", "priority"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "visual_diff"}}, "required": ["type"]},
+          "then": {"required": ["caption", "priority"], "properties": {"kind": {"const": "visual_diff"}}}
+        }
+      ],
+      "additionalProperties": false
+    },
+    "visualReview": {
+      "type": "object",
+      "required": ["type", "status", "issues"],
+      "properties": {
+        "type": {"const": "visual_review"},
+        "status": {"enum": ["PASS", "WARN", "FAIL", "HUMAN_GATE_REQUIRED"]},
+        "scenarioId": {"type": "string", "minLength": 1},
+        "artifact": {"$ref": "#/$defs/relativePath"},
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["severity", "category", "message"],
+            "properties": {
+              "severity": {"enum": ["info", "warning", "error", "critical"]},
+              "category": {"enum": ["clipping", "overlap", "alignment", "readability", "missing_asset", "unexpected_layout", "visual_regression", "hierarchy", "obstruction"]},
+              "message": {"type": "string", "minLength": 1},
+              "artifact": {"$ref": "#/$defs/relativePath"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "message": {"type": "string", "minLength": 1},
+        "stage": {"type": "string", "minLength": 1},
+        "scenarioId": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["test", "environment", "tooling", "configuration", "unknown"]},
+        "retryable": {"type": "boolean"}
       },
       "additionalProperties": false
     }

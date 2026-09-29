@@ -1,327 +1,557 @@
-# Codex 자동 QA Contract
+# Automated QA Contract v2
 
 ## 1. 개요
 
-Project OS의 QA 기능은 테스트 runner가 아니라 프로젝트 간 공통 인터페이스입니다.
+Project OS의 Automated QA는 테스트 엔진이 아니라 **프로젝트 간 공통 Contract**입니다.
 
-    Project OS
-      ↓
-    QA Contract / optional Scaffold
-      ↓
-    Actual Project
-      ↓
-    project-specific QA implementation
-      ↓
-    Remote Control
+```text
+Project OS
+    ↓
+QA Contract / Scaffold
 
-Project OS는 scripts/qa.ps1, .qa/runs/<run-id>/result.json, artifact metadata의 형태만 정의합니다. 실제 build/test/UI automation은 각 프로젝트가 구현합니다.
+각 Project
+    ↓
+project-specific QA Runner
+    ↓
+result.json + artifacts
 
-Project OS가 직접 구현하지 않는 것:
+Remote Control
+    ↓
+manifest + result.json 해석
+    ↓
+외부 알림 / Job Status / Human Gate
+```
 
-- Playwright
-- Godot 실행/테스트
-- Android ADB/Appium
-- pytest
-- Electron/Tauri test
-- Codex process spawning
-- Telegram/Remote Control worker
-- Human Gate UI
-- screenshot 전송
-- 별도 QA 서버/중앙 Dashboard
+Project OS가 소유하는 것은 Manifest, Scenario, Result, Artifact, Screenshot, Visual Review의 형식뿐입니다. Playwright, Android Emulator, Godot, Chromium, Windows app automation 같은 실제 실행 기술은 각 프로젝트가 선택합니다.
 
-## 2. 왜 QA Contract가 필요한가
+Project OS에는 다음을 구현하지 않습니다.
 
-프로젝트마다 테스트 기술은 달라도 Codex와 Remote Control이 알아야 할 질문은 같습니다.
+- Telegram API/Bot
+- Remote Control Job orchestration
+- Runner/Host 관리
+- Codex/Claude provider orchestration
+- 특정 프로젝트 전용 QA 코드
+- 특정 테스트 프레임워크의 강제 dependency
 
-- QA를 어떻게 시작하는가?
-- 자동 검증이 성공했는가?
-- 어떤 단계가 실행됐고 어떤 단계가 생략됐는가?
-- 실패가 테스트 실패인지 환경 문제인지?
-- 사람이 봐야 할 UI artifact가 있는가?
-- artifact 파일은 어디에 있는가?
+## 2. Quick Start
 
-이 정보를 하나의 contract로 고정하면 Remote Control은 Web/Godot/Android의 내부 구현을 알 필요가 없습니다.
+새 프로젝트에 base scaffold와 QA를 함께 설치:
 
-## 3. Quick Start
+```bash
+projectctl init --with-qa
+```
 
-새 프로젝트에서 기본 Project OS만 설치:
+이미 Project OS를 사용하는 프로젝트에 QA overlay만 설치:
 
-    projectctl init
+```bash
+projectctl qa-init
+```
 
-QA도 처음부터 사용할 프로젝트:
+생성 구조:
 
-    projectctl init --with-qa
+```text
+.qa/
+├─ manifest.yaml
+├─ README.md
+├─ result.example.json
+├─ scenarios/
+│  └─ example.yaml
+├─ scripts/
+│  ├─ run-qa.ps1
+│  └─ run-qa.sh
+└─ runs/                 # runtime output, Git ignored
+```
 
-이미 Project OS를 사용하는 프로젝트에는 기존 scaffold를 덮어쓰지 않고 QA overlay만 설치합니다.
+기본 runner는 거짓 PASS를 만들지 않습니다. 프로젝트별 QA를 구현하기 전에는 `QA_NOT_CONFIGURED` 오류와 `FAIL` result를 남깁니다.
 
-    projectctl qa-init
+## 3. QA Manifest
 
-생성되는 QA 파일:
+Discovery point는 항상 다음입니다.
 
-    scripts/
-      qa.ps1
+```text
+.qa/manifest.yaml
+```
 
-    qa/
-      README.md
-      result.example.json
-      scenarios/
-        smoke.example.yaml
+예:
 
-    .qa/
-      .gitignore
-      .gitkeep
+```yaml
+schemaVersion: "2.0"
 
-.qa/runs/는 실행 시 생성되는 runtime artifact 영역이며 기본적으로 Git에서 제외합니다.
+qa:
+  command:
+    windows: "powershell -NoProfile -ExecutionPolicy Bypass -File .qa/scripts/run-qa.ps1 -RunId {runId}"
+    unix: "./.qa/scripts/run-qa.sh --run-id {runId}"
+  stages:
+    - build
+    - unit
+    - integration
+    - smoke
+    - ui
+    - visual
+  timeoutSeconds: 900
+  environment:
+    required: []
+    optional: []
 
-초기 qa.ps1은 QA가 구현된 것처럼 거짓 성공하지 않습니다. QA_NOT_CONFIGURED 오류가 포함된 FAIL result를 만들고 exit code 1로 종료합니다.
+scenarios:
+  directory: ".qa/scenarios"
 
-## 4. 프로젝트에서 qa.ps1 구현하기
+artifacts:
+  result: ".qa/runs/{runId}/result.json"
+  screenshots: ".qa/runs/{runId}/screenshots"
+  logs: ".qa/runs/{runId}/logs"
+  visual: ".qa/runs/{runId}/visual"
+  metadata: ".qa/runs/{runId}/metadata"
+```
 
-Windows 우선 공통 entry point:
+Manifest가 표현하는 정보:
 
-    .\scripts\qa.ps1
+- host OS별 QA 실행 command
+- 프로젝트가 지원하는 stage
+- result/screenshot/log/visual/metadata 위치
+- optional timeout
+- optional environment requirements
+- scenario directory
 
-외부 호출자는 deterministic한 run id를 넘길 수 있습니다.
+`{runId}`는 외부 caller가 생성한 안전한 run id로 치환합니다.
 
-    .\scripts\qa.ps1 -RunId QA-20260928-001
+Schema:
 
-권장 실행 순서:
+```text
+schemas/qa-manifest.schema.json
+```
 
-    preflight
-    → build
-    → launch
-    → smoke test
-    → functional test
-    → optional UI scenario
-    → artifact collection
-    → result.json 생성
-    → process cleanup
+## 4. QA Scenario
 
-모든 프로젝트가 모든 단계를 구현할 필요는 없습니다. 지원하지 않는 단계는 SKIPPED로 기록합니다.
+Scenario는 실행 엔진 DSL이 아니라 **의미적 Contract**입니다. `launch_app`, `start_focus`, `mina_visible` 같은 의미를 실제로 어떻게 수행하는지는 프로젝트 runner가 결정합니다.
 
-공통 규칙:
+예:
 
-1. 가능한 한 항상 result.json을 생성합니다.
-2. 실행되지 못한 테스트를 PASS로 기록하지 않습니다.
-3. 프로젝트가 시작한 child process는 cleanup 단계에서 종료합니다.
-4. 원본 framework report를 남겨도 되지만 Remote Control은 공통 result.json만으로 상태를 판단할 수 있어야 합니다.
-5. PowerShell 5.1에서도 동작할 수 있도록 보수적인 문법을 사용합니다.
+```yaml
+schemaVersion: "2.0"
+id: companion_focus_session
+name: Companion Focus Session
+type: ui
+required: true
+timeoutSeconds: 120
+tags: [smoke, ui]
+humanGate: false
 
-공통 exit code:
+steps:
+  - action: launch_app
+  - waitFor: main_window_ready
+  - screenshot: 01-main
+    caption: Main window after launch
+  - action: start_focus
+  - screenshot: 02-focus-running
+    caption: Focus session running
 
-| Exit code | 의미 |
+assertions:
+  - app_running
+  - mina_visible
+  - timer_running
+```
+
+지원 항목:
+
+- scenario id / name / type
+- semantic steps
+- assertions
+- screenshot checkpoints
+- tags
+- timeout
+- required/optional
+- humanGate
+
+Schema:
+
+```text
+schemas/qa-scenario.schema.json
+```
+
+## 5. QA Runner
+
+Runner는 프로젝트가 구현합니다. Project OS는 runner 내부 기술을 알지 못합니다.
+
+Windows:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .qa/scripts/run-qa.ps1 -RunId QA-20260929-001
+```
+
+Unix:
+
+```bash
+./.qa/scripts/run-qa.sh --run-id QA-20260929-001
+```
+
+Runner 규칙:
+
+1. caller가 준 run id를 사용합니다.
+2. 지원하는 stage만 실행하고 미지원 stage/scenario는 `SKIPPED`로 기록할 수 있습니다.
+3. 실패하더라도 가능한 경우 항상 유효한 `result.json`을 남깁니다.
+4. 실행되지 않은 검증을 PASS로 기록하지 않습니다.
+5. 프로젝트가 시작한 child process는 runner가 정리합니다.
+6. 원본 framework report가 있더라도 공통 result만으로 외부 caller가 상태를 판단할 수 있어야 합니다.
+
+Exit code는 transport hint입니다.
+
+| Exit | 의미 |
 | --- | --- |
-| 0 | PASS |
+| 0 | PASS 또는 PASS_WITH_WARNINGS |
 | 1 | FAIL |
-| 2 | UI_REVIEW_REQUIRED |
+| 2 | HUMAN_GATE_REQUIRED |
 
-## 5. result.json 규격
+최종 판단의 source of truth는 exit code가 아니라 `result.json.status`입니다.
 
-Schema 파일:
+## 6. QA Result
 
-    schemas/qa-result.schema.json
+현재 Contract version은 `2.0`입니다.
 
-Contract version은 1.0입니다.
+Schema:
 
-run-level status:
+```text
+schemas/qa-result.schema.json
+```
 
-- PASS
-- FAIL
-- UI_REVIEW_REQUIRED
+최상위 status:
 
-자동 stage status:
+- `PASS`
+- `PASS_WITH_WARNINGS`
+- `FAIL`
+- `HUMAN_GATE_REQUIRED`
 
-- PASS
-- FAIL
-- SKIPPED
+stage status:
 
-UI stage는 추가로 REVIEW_REQUIRED를 사용할 수 있습니다.
+- `PENDING`
+- `RUNNING`
+- `PASS`
+- `WARN`
+- `FAIL`
+- `SKIPPED`
 
-예:
+기본 구조:
 
-    {
-      "schema_version": "1.0",
-      "run_id": "QA-example-001",
-      "project": "desktown",
-      "status": "UI_REVIEW_REQUIRED",
-      "started_at": "2026-09-28T01:00:00Z",
-      "finished_at": "2026-09-28T01:02:00Z",
-      "preflight": "PASS",
-      "build": "PASS",
-      "launch": "PASS",
-      "smoke": "PASS",
-      "functional": "PASS",
-      "ui": "REVIEW_REQUIRED",
-      "artifact_collection": "PASS",
-      "cleanup": "PASS",
-      "next_action": "REQUEST_UI_REVIEW",
-      "errors": [],
-      "artifacts": []
-    }
+```json
+{
+  "schemaVersion": "2.0",
+  "runId": "QA-20260929-001",
+  "project": {"id": "desktown", "name": "DeskTown"},
+  "status": "PASS_WITH_WARNINGS",
+  "startedAt": "2026-09-29T12:00:00Z",
+  "finishedAt": "2026-09-29T12:02:00Z",
+  "summary": {
+    "total": 20,
+    "passed": 19,
+    "failed": 0,
+    "warnings": 1,
+    "skipped": 0,
+    "humanGates": 0
+  },
+  "stages": [],
+  "scenarios": [],
+  "artifacts": [],
+  "visualReviews": [],
+  "errors": [],
+  "nextAction": "REVIEW_WARNINGS"
+}
+```
 
-UI_APPROVED와 UI_REJECTED는 QA runner 결과가 아닙니다.
+`HUMAN_GATE_REQUIRED`는 사람이 판단해야 할 지점이 존재한다는 QA 결과입니다. Human Gate 승인/거절 상태 자체는 Remote Control 등 외부 시스템의 책임이며 Project OS가 승인하지 않습니다.
 
-    QA runner
-      UI_REVIEW_REQUIRED
-            ↓
-    Remote Control / Human Gate
-            ↓
-      UI_APPROVED 또는 UI_REJECTED
+## 7. Artifact Contract
 
-QA schema는 두 Human Gate 상태를 의도적으로 허용하지 않습니다.
-
-환경 문제로 QA가 실행되지 못한 경우 PASS가 아닙니다. FAIL과 kind=environment, next_action=INVESTIGATE_ENVIRONMENT 조합을 사용합니다.
-
-## 6. Artifact 규격
-
-기본 run directory:
-
-    .qa/
-      runs/
-        <run-id>/
-          result.json
-          stdout.log
-          stderr.log
-          screenshots/
-          videos/
-          artifacts/
-
-지원 artifact type:
-
-- screenshot
-- video
-- log
-- report
-- trace
-- other
-
-예:
-
-    {
-      "type": "screenshot",
-      "name": "main-screen",
-      "path": "screenshots/01-main.png",
-      "scenario": "main-flow"
-    }
-
-path는 반드시 QA run directory 기준의 forward-slash relative path입니다.
+Artifact path는 **repository/workspace root 기준 상대경로**이며 forward slash를 사용합니다.
 
 허용:
 
-    screenshots/01-main.png
-    artifacts/junit.xml
-    stdout.log
+```text
+.qa/runs/QA-001/screenshots/01-main.png
+.qa/runs/QA-001/logs/ui.log
+.qa/runs/QA-001/visual/01-main-diff.png
+```
 
-허용하지 않음:
+금지:
 
-    C:\temp\screen.png
-    /tmp/screen.png
-    ../other-run/result.json
-    screenshots/../secret.png
+```text
+C:/temp/screen.png
+/tmp/screen.png
+../other-run/result.json
+.qa/runs/x/../secret.png
+.qa\runs\x\screen.png
+```
 
-## 7. Codex 작업과 연결
+Artifact type:
 
-consumer scaffold의 AGENTS.md는 scripts/qa.ps1이 존재하는 경우 완료 전에 QA를 실행하도록 규정합니다.
+- screenshot
+- visual_diff
+- log
+- report
+- trace
+- video
+- metadata
+- other
 
-Codex completion rule:
+공통 metadata:
 
-1. implementation 완료 후 QA entry point가 있으면 실행합니다.
-2. FAIL이면 완료 처리하지 않고 원인을 분석합니다.
-3. 수정 가능한 실패는 합리적인 횟수 안에서 수정 후 다시 실행합니다.
-4. functional 자동 검증이 통과했지만 시각 판단이 필요하면 UI_REVIEW_REQUIRED를 유지합니다.
-5. 작업 결과에 QA run id, status, result.json과 artifact 위치를 기록합니다.
-6. 환경 문제로 실행하지 못한 경우 성공으로 간주하지 않습니다.
-7. 최종 UI 미감 승인과 UI_APPROVED/UI_REJECTED 결정은 Codex가 하지 않습니다.
+- name
+- path
+- stage
+- scenarioId
+- step
+- caption
+- severity
+- createdAt
+- mediaType
+- sizeBytes
+- sha256
 
-## 8. Remote Control과 연결
+절대경로를 Contract에 저장하지 않습니다.
 
-Remote Control이 알아야 하는 interface는 다음뿐입니다.
+## 8. Screenshot Contract
 
-1. entry point 존재 여부: scripts/qa.ps1
-2. run id 전달: -RunId QA-...
-3. result 위치: .qa/runs/<run-id>/result.json
-4. result schema: 1.0
-5. artifact path 기준: result가 있는 run directory
-6. exit code: 0=PASS, 1=FAIL, 2=UI_REVIEW_REQUIRED
+Screenshot은 1급 Artifact입니다.
 
-권장 흐름:
+Screenshot artifact에는 다음 필드를 사용합니다.
 
-    Remote Control
-        ↓
-    scripts/qa.ps1 -RunId <known-id>
-        ↓
-    exit code + result.json
-        ↓
-    schema/status 확인
-        ↓
-    artifacts[] resolve
-        ↓
-    PASS / FAIL / UI review 요청
+- `scenarioId`
+- `step`
+- `caption`
+- `kind`
+- `priority`
 
-Remote Control은 프로젝트가 Playwright인지 Godot인지 Android인지 검사할 필요가 없습니다.
+`kind`:
 
-entry point가 없다면 QA unsupported라는 사실만 알 수 있습니다. 이를 자동으로 PASS로 바꾸는 것은 Remote Control 정책의 책임이며 Project OS contract는 그렇게 판단하지 않습니다.
+- initial
+- checkpoint
+- result
+- failure
+- visual_diff
 
-## 9. 프로젝트 종류별 예시
+`priority`:
+
+- normal
+- important
+- failure
+
+Remote Control은 이를 이용해 Telegram 등 외부 UI로 어떤 이미지를 보낼지 선택할 수 있습니다. Project OS에는 전송 로직을 넣지 않습니다.
+
+권장 선택 정책 예:
+
+```text
+failure > important > normal
+```
+
+동일 priority에서는 `failure/result/checkpoint/initial` 같은 project policy를 외부에서 적용할 수 있습니다.
+
+## 9. Visual QA Contract
+
+Visual Review는 `visualReviews[]`에 기록합니다.
+
+예:
+
+```json
+{
+  "type": "visual_review",
+  "status": "WARN",
+  "scenarioId": "companion_focus_session",
+  "artifact": ".qa/runs/QA-001/screenshots/02-focus-running.png",
+  "issues": [
+    {
+      "severity": "warning",
+      "category": "overlap",
+      "message": "Character is too close to the bottom HUD.",
+      "artifact": ".qa/runs/QA-001/screenshots/02-focus-running.png"
+    }
+  ]
+}
+```
+
+category:
+
+- clipping
+- overlap
+- alignment
+- readability
+- missing_asset
+- unexpected_layout
+- visual_regression
+- hierarchy
+- obstruction
+
+누가 visual review를 수행하는지는 Contract 밖입니다. Project runner, Remote Control, 별도 AI reviewer 모두 가능하며 Project OS가 reviewer를 강제하지 않습니다.
+
+## 10. Codex 작업 완료 규칙
+
+consumer `AGENTS.md`는 `.qa/manifest.yaml`이 존재하면 QA-enabled project로 간주합니다.
+
+코드 변경이 QA 대상이면:
+
+```text
+Implement
+→ Build / project-specific checks
+→ Automated QA
+→ result.json
+→ Artifact 저장
+→ 작업 완료 판단
+```
+
+QA 없이 완료 처리할 수 있는 예외:
+
+- 문서만 수정
+- QA 환경 자체를 수정
+- 실행 환경이 실제로 존재하지 않음
+- Task가 명시적으로 QA 제외
+
+예외를 사용한 경우 이유를 결과에 명시합니다.
+
+`FAIL`은 완료가 아닙니다. `PASS_WITH_WARNINGS`는 warning/artifact를 함께 보고합니다. `HUMAN_GATE_REQUIRED`는 외부 사람 승인 전까지 그대로 유지합니다.
+
+## 11. Remote Control Integration
+
+Remote Control은 프로젝트 기술을 알아서는 안 됩니다.
+
+권장 절차:
+
+```text
+1. repository root에서 .qa/manifest.yaml 탐색
+2. manifest.schemaVersion 확인
+3. host OS에 맞는 qa.command.windows 또는 qa.command.unix 선택
+4. 안전한 runId 생성
+5. command의 {runId} 치환
+6. timeout 적용 후 command 실행
+7. artifacts.result의 {runId} 치환
+8. result.json 읽기
+9. schemaVersion에 맞는 result schema로 validation
+10. status / artifacts / visualReviews 해석
+```
+
+v2에서 Remote Control이 필요한 입력은 다음뿐입니다.
+
+- `.qa/manifest.yaml`
+- caller가 만든 `runId`
+- manifest가 지정한 result path
+- `schemas/qa-result.schema.json`의 v2 규격
+
+상태 해석:
+
+| Result | 외부 동작의 의미 |
+| --- | --- |
+| PASS | 자동 QA 통과 |
+| PASS_WITH_WARNINGS | 통과했지만 warning/artifact를 노출 |
+| FAIL | 실패 원인과 artifact를 노출하고 완료로 보지 않음 |
+| HUMAN_GATE_REQUIRED | 외부 Human Gate를 생성하고 관련 screenshot/issue를 노출 |
+
+Screenshot 전송 후보는 `artifacts[type=screenshot]`에서 `priority`와 `kind`를 이용해 선택합니다. Visual 문제는 `visualReviews[].issues`를 읽습니다.
+
+Project OS에는 Telegram 전송 코드, Job 상태 변경 코드, Human Gate UI를 넣지 않습니다.
+
+## 12. 프로젝트별 Adapter 예
 
 ### Web
 
-    preflight  → Node/browser 확인
-    build      → 프로젝트 build
-    launch     → dev/test server
-    smoke      → HTTP health + browser load
-    functional → 프로젝트가 선택한 browser test
-    ui         → screenshot 후 필요 시 REVIEW_REQUIRED
-    cleanup    → server/browser 종료
-
-Project OS는 Playwright dependency나 test code를 제공하지 않습니다.
-
-### Godot
-
-    preflight  → Godot executable/project 확인
-    build      → export/build 또는 SKIPPED
-    launch     → game 실행
-    smoke      → startup/crash 검사
-    functional → project-specific scene/test harness
-    ui         → 주요 scene capture
-    cleanup    → game process 종료
-
-Project OS는 Godot binary나 scene test framework를 제공하지 않습니다.
+- build: project build
+- unit: Vitest/Jest 등
+- integration/ui: Playwright 등
+- screenshots: browser capture
 
 ### Android
 
-    preflight  → JDK/SDK/device 또는 emulator 확인
-    build      → Gradle build
-    launch     → install + activity launch
-    smoke      → crash/startup 검사
-    functional → project-specific instrumentation/UI test
-    ui         → screenshot/video
-    cleanup    → test process/app 정리
+- build: Gradle
+- integration: instrumentation
+- ui: Espresso/UIAutomator 등
+- screenshots: device/emulator capture
 
-Project OS는 ADB/Appium/emulator lifecycle을 구현하지 않습니다.
+### Godot / Windows
 
-## 10. Troubleshooting
+- build/export: project-specific command
+- smoke: process launch/crash check
+- integration: test hooks
+- ui/visual: Windows capture
 
-### qa.ps1이 항상 FAIL
+### Chrome Extension
 
-새 scaffold의 기본 동작입니다. QA_NOT_CONFIGURED이면 프로젝트에 맞는 QA 구현을 추가해야 합니다.
+- build: extension bundle
+- integration/ui: Chromium extension context
+- screenshots: browser capture
 
-### 테스트 도구가 없어 실행 불가
+위 도구들은 예시이며 Project OS dependency가 아닙니다.
 
-PASS로 바꾸지 않습니다. FAIL + kind=environment + next_action=INVESTIGATE_ENVIRONMENT를 사용합니다.
+## 13. Schema Validation
 
-### 일부 단계가 프로젝트에 없음
+현재 schema:
 
-SKIPPED를 사용합니다. 존재하지 않는 기능을 억지로 구현할 필요는 없습니다.
+```text
+schemas/qa-manifest.schema.json
+schemas/qa-scenario.schema.json
+schemas/qa-result.schema.json
+```
 
-### 자동 테스트는 통과했는데 화면을 사람이 봐야 함
+YAML Manifest/Scenario도 YAML을 object로 파싱한 뒤 JSON Schema로 validation할 수 있습니다.
 
-run status를 UI_REVIEW_REQUIRED, UI stage를 REVIEW_REQUIRED, next action을 REQUEST_UI_REVIEW로 기록하고 screenshot/video artifact를 남깁니다.
+CI에서는 다음을 검증합니다.
 
-### Remote Control이 artifact를 못 찾음
+- Manifest schema
+- Scenario schema
+- Result schema
+- PASS
+- PASS_WITH_WARNINGS
+- FAIL
+- HUMAN_GATE_REQUIRED
+- repository-relative Artifact path
+- Screenshot metadata
+- Visual Review category
+- scaffold install regression
+- Linux runner smoke
+- Windows PowerShell runner smoke
+- 기존 Project OS regression suite
 
-artifact path가 절대경로 또는 repository 기준 경로인지 확인합니다. 반드시 .qa/runs/<run-id>/ 기준 상대경로여야 합니다.
+## 14. Versioning / Legacy v1
 
-### 기존 프로젝트에 QA만 추가하고 싶음
+QA Contract version은 Project OS consumer canonical schema와 분리합니다.
 
-projectctl init --force를 사용하지 않습니다. 기존 Project OS 파일을 건드리지 않는 projectctl qa-init을 사용합니다.
+현재:
+
+- Project OS package: 0.4.0
+- base scaffold: 0.4.0
+- consumer canonical schema: 1
+- QA Contract: 2.0
+- legacy QA Result: 1.0
+- central DB schema: 1
+
+Legacy result schema:
+
+```text
+schemas/qa-result-v1.schema.json
+```
+
+기존 v1 consumer는 자동으로 덮어쓰지 않습니다. v1의 특징은 다음과 같습니다.
+
+```text
+scripts/qa.ps1
+.qa/runs/<run-id>/result.json
+schema_version: "1.0"
+PASS | FAIL | UI_REVIEW_REQUIRED
+```
+
+Remote Control이 legacy 지원을 유지하려면:
+
+1. `.qa/manifest.yaml`이 있으면 v2로 처리합니다.
+2. manifest가 없고 `scripts/qa.ps1`이 존재하면 legacy v1 adapter를 사용할 수 있습니다.
+3. v1 result는 `schemas/qa-result-v1.schema.json`으로 검증합니다.
+
+기존 v1 project에서 `projectctl qa-init`을 강제로 실행해 덮어쓰지 마세요. manifest/runner/scenario를 프로젝트별 구현과 함께 명시적으로 migration하는 방식을 사용합니다.
+
+## 15. 완료 조건
+
+QA-enabled consumer project는 다음 조건을 만족해야 합니다.
+
+- Manifest가 현재 schema와 일치
+- Scenario가 사용하는 경우 schema와 일치
+- runner가 host command를 제공
+- runner가 가능한 실패 상황에서도 result를 생성
+- result가 현재 schema와 일치
+- artifact path가 repository-relative
+- screenshot metadata가 priority/kind를 제공
+- visual review가 구조화된 issue를 제공
+- Remote Control이 프로젝트 기술을 몰라도 manifest/result만으로 결과를 읽을 수 있음
