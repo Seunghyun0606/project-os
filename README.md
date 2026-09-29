@@ -145,6 +145,23 @@ projectctl qa-init --force
 
 공통 원칙은 **새 테스트 framework를 바로 도입하기보다 현재 repository의 build/test/smoke/visual 자산을 먼저 재사용하는 것**입니다. Project OS는 공통 Manifest/Scenario/Result Contract만 유지합니다.
 
+### 2-1. 범용 세팅 Prompt
+
+Project OS를 프로젝트에 적용할 때는 두 상황만 구분하면 됩니다.
+
+| 상황 | 권장 Prompt |
+| --- | --- |
+| 프로젝트를 이제 시작하거나 본격 개발 전 | 초기 세팅 Prompt |
+| 이미 개발이 진행 중이고 코드/문서/테스트가 존재 | 프로젝트 중간 도입 Prompt |
+
+두 Prompt 모두 **Project OS + Automated QA Contract v2**를 함께 고려하며, 현재 repository를 먼저 분석한 뒤 중복 init이나 `--force` 덮어쓰기를 피하도록 되어 있습니다.
+
+바로 복사해서 사용할 수 있는 전체 Prompt는 [Project OS Setup Prompts](docs/SETUP_PROMPTS.md)를 참고하세요.
+
+- **초기 세팅 Prompt**: scaffold, PROJECT.md, roadmap/backlog/task, decision, quality gate, optional QA까지 처음 구성
+- **프로젝트 중간 도입 Prompt**: Repository Inventory → 과거 Milestone 요약 → 현재 canonical state 복원 → 미래 Task 관리 → 기존 QA v1/v2 안전 migration
+- 세팅 완료 뒤에는 긴 Prompt를 반복하지 않고 repository의 canonical state를 읽어 다음 Task를 진행합니다.
+
 ### 3. 최초 기획문서 넣기
 
 이미 작성한 기획안이 있다면 원문 전체를 `PROJECT.md`에 복사하지 말고 `specs/product/` 아래에 둡니다.
