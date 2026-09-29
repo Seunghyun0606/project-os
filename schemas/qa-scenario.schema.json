@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-os.local/schemas/qa-scenario.schema.json",
+  "title": "Project OS QA Scenario",
+  "description": "Semantic scenario contract. Project-specific runners interpret actions and assertions.",
+  "type": "object",
+  "required": ["schemaVersion", "id", "name", "type", "steps"],
+  "properties": {
+    "schemaVersion": {"const": "2.0"},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "name": {"type": "string", "minLength": 1},
+    "type": {"enum": ["build", "unit", "integration", "smoke", "ui", "visual", "e2e", "other"]},
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {"type": "string", "minLength": 1},
+          {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "action": {"type": "string", "minLength": 1},
+              "screenshot": {"type": "string", "minLength": 1},
+              "waitFor": {"type": "string", "minLength": 1},
+              "parameters": {"type": "object", "additionalProperties": true},
+              "caption": {"type": "string"},
+              "required": {"type": "boolean"}
+            },
+            "anyOf": [
+              {"required": ["action"]},
+              {"required": ["screenshot"]},
+              {"required": ["waitFor"]}
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"type": "string", "minLength": 1},
+          {
+            "type": "object",
+            "required": ["check"],
+            "properties": {
+              "check": {"type": "string", "minLength": 1},
+              "expected": {},
+              "message": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "screenshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "kind", "priority"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "stepId": {"type": "string", "minLength": 1},
+          "caption": {"type": "string"},
+          "kind": {"enum": ["initial", "checkpoint", "result", "failure", "visual_diff"]},
+          "priority": {"enum": ["normal", "important", "failure"]}
+        },
+        "additionalProperties": false
+      }
+    },
+    "tags": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "timeoutSeconds": {"type": "integer", "minimum": 1},
+    "required": {"type": "boolean"},
+    "humanGate": {
+      "oneOf": [
+        {"type": "boolean"},
+        {
+          "type": "object",
+          "required": ["required"],
+          "properties": {
+            "required": {"type": "boolean"},
+            "reason": {"type": "string"}
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

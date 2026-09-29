@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "2.0",
+  "runId": "QA-example-001",
+  "project": {"id": "example-project", "name": "Example Project"},
+  "status": "PASS_WITH_WARNINGS",
+  "startedAt": "2026-09-29T12:00:00Z",
+  "finishedAt": "2026-09-29T12:02:00Z",
+  "summary": {"total": 6, "passed": 5, "failed": 0, "warnings": 1, "skipped": 0, "humanGates": 0},
+  "stages": [
+    {"id": "build", "status": "PASS"},
+    {"id": "unit", "status": "PASS"},
+    {"id": "integration", "status": "PASS"},
+    {"id": "smoke", "status": "PASS"},
+    {"id": "ui", "status": "PASS"},
+    {"id": "visual", "status": "WARN", "message": "One readability warning recorded."}
+  ],
+  "scenarios": [
+    {"id": "companion_focus_session", "name": "Companion Focus Session", "type": "ui", "status": "WARN", "required": true}
+  ],
+  "artifacts": [
+    {
+      "type": "screenshot",
+      "name": "focus-running",
+      "path": ".qa/runs/QA-example-001/screenshots/02-focus-running.png",
+      "stage": "ui",
+      "scenarioId": "companion_focus_session",
+      "step": "02-focus-running",
+      "caption": "Focus session running",
+      "kind": "result",
+      "priority": "important",
+      "createdAt": "2026-09-29T12:01:30Z"
+    },
+    {
+      "type": "visual_diff",
+      "name": "focus-running-diff",
+      "path": ".qa/runs/QA-example-001/visual/02-focus-running-diff.png",
+      "stage": "visual",
+      "scenarioId": "companion_focus_session",
+      "caption": "Visual diff for focus session",
+      "kind": "visual_diff",
+      "priority": "important",
+      "createdAt": "2026-09-29T12:01:40Z"
+    },
+    {"type": "log", "name": "ui-log", "path": ".qa/runs/QA-example-001/logs/ui.log", "stage": "ui"}
+  ],
+  "visualReviews": [
+    {
+      "type": "visual_review",
+      "status": "WARN",
+      "scenarioId": "companion_focus_session",
+      "artifact": ".qa/runs/QA-example-001/screenshots/02-focus-running.png",
+      "issues": [
+        {
+          "severity": "warning",
+          "category": "readability",
+          "message": "Timer contrast is slightly low.",
+          "artifact": ".qa/runs/QA-example-001/screenshots/02-focus-running.png"
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "nextAction": "REVIEW_WARNINGS"
+}
