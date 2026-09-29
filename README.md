@@ -102,6 +102,49 @@ QA는 opt-in입니다. 일반 `projectctl init`은 `.qa/manifest.yaml`을 만들
 
 자세한 QA 규격은 [Codex 자동 QA Contract](docs/QA_CONTRACT.md)를 참고하세요.
 
+#### 기존 프로젝트에 Automated QA 적용
+
+이미 개발 중인 프로젝트에는 Project OS 전체를 다시 설치하지 말고 **QA 상태를 먼저 확인한 뒤 필요한 overlay만 적용**합니다.
+
+```text
+1. 기존 QA 상태 확인
+2. QA가 없으면 projectctl qa-init
+3. 기존 v2이면 현재 .qa/ 확장
+4. legacy v1이면 기존 runner를 보존한 채 v2로 migration
+5. 프로젝트 기술에 맞는 runner/scenario 구현
+6. QA 실행 → result.json / artifact 확인
+```
+
+QA 상태 판별 기준:
+
+| 현재 상태 | 적용 방법 |
+| --- | --- |
+| `.qa/manifest.yaml` 없음 + legacy QA 없음 | `projectctl qa-init` 실행 |
+| `.qa/manifest.yaml` 존재 | 이미 QA Contract v2이므로 기존 구조를 확장 |
+| `scripts/qa.ps1`, `schema_version: "1.0"` 등 legacy QA 존재 | `--force` 금지. 기존 QA 로직을 v2로 수동 migration |
+
+Legacy QA가 있는 프로젝트에서는 다음 명령을 사용하지 않는 것을 권장합니다.
+
+```powershell
+projectctl qa-init --force
+```
+
+기존 runner와 artifact contract를 덮어쓸 수 있기 때문입니다.
+
+프로젝트별 적용 방향:
+
+| 프로젝트 | 주요 QA Adapter |
+| --- | --- |
+| DeskTown | Godot 4.x + C# + Windows process/screenshot + 기존 Windows QA kit |
+| Nothing Wrong | 현재 Web test stack + browser smoke/UI/visual |
+| The Orpheus Project | 현재 runtime/engine + terminal/incident flow smoke |
+| Tab Pets | Chrome Extension + isolated Chromium context |
+| DailyTown | Gradle/Android + 기존 Emulator Replay/Visual QA |
+
+각 프로젝트에서 Agent에게 바로 전달할 수 있는 상세 Prompt와 migration 절차는 [Existing Project QA Adoption Prompts](docs/QA_ADOPTION_PROMPTS.md)를 참고하세요.
+
+공통 원칙은 **새 테스트 framework를 바로 도입하기보다 현재 repository의 build/test/smoke/visual 자산을 먼저 재사용하는 것**입니다. Project OS는 공통 Manifest/Scenario/Result Contract만 유지합니다.
+
 ### 3. 최초 기획문서 넣기
 
 이미 작성한 기획안이 있다면 원문 전체를 `PROJECT.md`에 복사하지 말고 `specs/product/` 아래에 둡니다.
