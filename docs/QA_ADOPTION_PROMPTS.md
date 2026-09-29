@@ -2,6 +2,8 @@
 
 이 문서는 이미 개발 중인 프로젝트에 **Project OS Automated QA Contract v2**를 적용할 때 사용하는 실전 가이드와 복사 가능한 Agent Prompt를 제공합니다.
 
+Project OS 자체를 처음 세팅하거나, QA뿐 아니라 canonical state까지 개발 중간에 함께 도입하려면 [Project OS Setup Prompts](SETUP_PROMPTS.md)의 **초기 세팅 Prompt / 프로젝트 중간 도입 Prompt**를 먼저 사용하세요. 이 문서는 그 이후 기술별 QA adapter를 구체화할 때 사용합니다.
+
 Project OS가 정의하는 것은 공통 Contract뿐입니다.
 
 ```text
