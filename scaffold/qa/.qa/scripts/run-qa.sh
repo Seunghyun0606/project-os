@@ -14,8 +14,12 @@ if [ -z "$RUN_ID" ]; then
 fi
 
 case "$RUN_ID" in
-  QA-[A-Za-z0-9]* ) ;;
-  * ) echo "RunId must start with QA- and contain only safe identifier characters." >&2; exit 64 ;;
+  QA-*) ;;
+  *) echo "RunId must start with QA-." >&2; exit 64 ;;
+esac
+SAFE_ID=$(printf '%s' "$RUN_ID" | sed 's/^QA-//')
+case "$SAFE_ID" in
+  ""|*[!A-Za-z0-9._-]*) echo "RunId contains unsupported characters." >&2; exit 64 ;;
 esac
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
